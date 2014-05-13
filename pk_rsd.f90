@@ -16,17 +16,22 @@ module pk_rsd
   real(DP) :: growth ! Growth factor 
   real(DP) :: ff ! Growth rate 
 
-  real(DP), allocatable :: pk0corr(:), pk2corr(:), pk4corr(:)
+  real(DP), allocatable :: pk0corr_A(:), pk2corr_A(:), pk4corr_A(:)
+  real(DP), allocatable :: pk0corr_B(:), pk2corr_B(:), pk4corr_B(:)
 
 contains
    
   subroutine init_pk()
     implicit none
 
-    allocate(pk0corr(nk),pk2corr(nk),pk4corr(nk))
-    pk0corr(:) = 0.0d0
-    pk2corr(:) = 0.0d0
-    pk4corr(:) = 0.0d0
+    allocate(pk0corr_A(nk),pk2corr_A(nk),pk4corr_A(nk))
+    allocate(pk0corr_B(nk),pk2corr_B(nk),pk4corr_B(nk))
+    pk0corr_A(:) = 0.0d0
+    pk2corr_A(:) = 0.0d0
+    pk4corr_A(:) = 0.0d0
+    pk0corr_B(:) = 0.0d0
+    pk2corr_B(:) = 0.0d0
+    pk4corr_B(:) = 0.0d0
 
   end subroutine init_pk
  
@@ -71,7 +76,6 @@ contains
       do ik=1,nk
          ak(ik) = ak_temp(1)*exp(dble(ik-1)*dlnk)
          pk(ik) = find_pk(ak(ik))
-         write(*,*) ak(ik),pk(ik)
       end do
 
       write(6,*) 'ak(1)=', ak(1)
@@ -163,15 +167,114 @@ contains
 
 ! ******************************************************* 
 
-    function integ_fp(ip, x,k,xmin,xmax)
+      function  fp_A(ip, x, mu,k,xmin,xmax)
+
+!     ip=1 for kernel of pk_A11
+!     ip=2 for kernel of pk_A12
+!     ip=3 for kernel of pk_A22
+!     ip=4 for kernel of pk_A23
+!     ip=5 for kernel of pk_A33
+
+      implicit none
+      integer ip
+      real*8 fp_A
+      real*8 mu, k, x, xmax, xmin
+
+      if(ip.eq.1) then
+         fp_A = - x**3 * ( mu+6.*mu**3+x*x*mu*(-3.+10.*mu*mu)+ &
+             x*(-3.+mu*mu-12.*mu**4) ) / 7.
+      elseif(ip.eq.2 .or. ip.eq.4) then
+         fp_A = x**4 * (mu*mu-1.) * (-1.+7.*x*mu-6.*mu*mu) / 14.
+      elseif(ip.eq.3) then
+         fp_A = x**3 * ( x*x*mu*(13.-41.*mu*mu) -4.*(mu+6.*mu**3) &
+             + x*(5.+9.*mu*mu+42.*mu**4) ) / 14.
+      elseif(ip.eq.5) then
+         fp_A = x**3 * (1.-7.*x*mu+6.*mu*mu) &
+             * (-2.*mu+x*(-1.+3.*mu*mu)) / 14.
+      endif
+
+      fp_A = fp_A * x * find_pk(k) * find_pk(k*sqrt(1.+x*x-2.*mu*x)) / (1.+x*x-2.*mu*x)**2
+
+      end function fp_A
+
+! ******************************************************* 
+
+      function  fp_tA(ip, x, mu,k,xmin,xmax)
+
+!     ip=6 for kernel of pk_tA11
+!     ip=7 for kernel of pk_tA12
+!     ip=8 for kernel of pk_tA22
+!     ip=9 for kernel of pk_tA23
+!     ip=10 for kernel of pk_tA33
+
+      implicit none
+      integer ip
+      real*8 fp_tA
+      real*8 mu, k, x, xmax, xmin
+      
+      if(ip.eq.6) then
+         fp_tA = (-mu+x*(2.*mu*mu-1.)) * (-3.*x-7.*mu+10.*x*mu*mu) / 7.
+      elseif(ip.eq.7) then
+         fp_tA = x * (mu*mu-1.) * (3.*x+7.*mu-10.*x*mu*mu) / 14.
+      elseif(ip.eq.8) then
+         fp_tA = ( 28.*mu*mu + x*mu*(25.-81.*mu*mu) &
+             + x**2*(1.-27.*mu*mu+54.*mu**4) ) / 14.
+      elseif(ip.eq.9) then
+         fp_tA = - x * (mu*mu-1.) * (x-7.*mu+6.*x*mu*mu) / 14. 
+      elseif(ip.eq.10) then
+         fp_tA = ( x-7.*mu+6.*x*mu*mu ) * ( -2.*mu + &
+             x*(3.*mu*mu-1.) ) / 14.
+      endif
+
+      fp_tA = fp_tA * x * find_pk(k*x) * find_pk(k*sqrt(1.+x*x-2.*mu*x)) / (1.+x*x-2.*mu*x)**2
+
+      end function fp_tA
+
+! ******************************************************* 
+
+    function  fp_aa(ip, x, mu,k,xmin,xmax)
+
+!     ip=11 for kernel of pk_aa11
+!     ip=12 for kernel of pk_aa12
+!     ip=13 for kernel of pk_aa22
+!     ip=14 for kernel of pk_aa23
+!     ip=15 for kernel of pk_aa33
+
+      implicit none
+      integer ip
+      real*8 fp_aa
+      real*8 mu, k, x, xmax, xmin
+
+      if(ip.eq.11) then
+         fp_aa = ( -7.*mu*mu + x**3*mu * (-3.+10.*mu*mu) + 3.*x &
+             * (mu+6.*mu**3) + x*x * (6.-19.*mu*mu-8.*mu**4) ) / 7.
+      elseif(ip.eq.12 .or. ip.eq.14) then
+         fp_aa = x * (-1.+mu*mu) * (6.*x - 7.*(1.+x*x)*mu + 8.*x*mu*mu) &
+             / 14.
+      elseif(ip.eq.13) then
+         fp_aa = ( -28.*mu*mu + x**3*mu* (-13.+41.*mu*mu) + &
+             x*mu*(11.+73.*mu*mu) - 2.*x*x*(-9.+31.*mu*mu+20.*mu**4) ) &
+             / 14.
+      elseif(ip.eq.15) then
+         fp_aa = ( 7.*mu + x * (-6.+7.*x*mu-8.*mu*mu) ) * &
+             ( -2.*mu + x*(-1.+3.*mu*mu) ) / 14.
+      endif
+
+      fp_aa = fp_aa * x * find_pk(k) * find_pk(k*x) / (1.+x*x-2.*mu*x)
+
+      end function fp_aa
+
+! ******************************************************* 
+
+    function integ_fp_B(ip, x,k,xmin,xmax)
 
       implicit none
       integer ip, imu, imu_max
       parameter(imu_max=10)
-      real(DP)  integ_fp, xmin, xmax, mumin, mumax
+      real(DP)  integ_fp_B, xmin, xmax, mumin, mumax
       real(DP)  k, x, mu, wmu(imu_max), mmu(imu_max)
      
-      integ_fp = 0.d0
+      integ_fp_B = 0.d0
 
       mumin = max(-1.0, (1.+x**2-xmax**2)/2./x)
       mumax = min( 1.0, (1.+x**2-xmin**2)/2./x)
@@ -181,116 +284,210 @@ contains
       call gaulegf(mumin, mumax, mmu, wmu, imu_max)
 
       do imu=1, imu_max
-         integ_fp = integ_fp + wmu(imu) * fp(ip, x, mmu(imu),k,xmin,xmax)
+         integ_fp_B = integ_fp_B + wmu(imu) * fp(ip, x, mmu(imu),k,xmin,xmax)
       enddo
 
-    end function integ_fp
+    end function integ_fp_B
+
+
+    function integ_fp_A(ip, x,k,xmin,xmax)
+
+      implicit none
+      integer ip, imu, imu_max
+      parameter(imu_max=10)
+      real*8  integ_fp_A, xmin, xmax, mumin, mumax
+      real*8  k, x, mu, wmu(imu_max), mmu(imu_max)
+
+      integ_fp_A = 0.d0
+
+      mumin = max(-1.0, (1.+x**2-xmax**2)/2./x)
+      mumax = min( 1.0, (1.+x**2-xmin**2)/2./x)
+
+      if(x.ge.0.5d0) mumax= 0.5d0/x
+
+      call gaulegf(mumin, mumax, mmu, wmu, imu_max)
+
+         do imu=1, imu_max
+            if(ip.le.5)  integ_fp_A = integ_fp_A + wmu(imu) * fp_A(ip, x, mmu(imu),k,xmin,xmax)
+            if(ip.ge.6 .and. ip.le.10) integ_fp_A = integ_fp_A + wmu(imu) * fp_tA(ip, x, mmu(imu),k,xmin,xmax)
+            if(ip.ge.11) integ_fp_A = integ_fp_A + wmu(imu) * fp_aa(ip, x, mmu(imu),k,xmin,xmax)
+         enddo
+        
+     end function integ_fp_A
 
 ! ******************************************************* 
 
-    subroutine calc_correction
+    subroutine calc_correction(ik)
       
       implicit none
       integer ik, isub
       integer ix, ixmax
       parameter(ixmax=600)
       real(DP) :: kmin, kmax, xmin, xmax, mumin, mumax
-      real(DP) :: k, ww(ixmax), xx(ixmax)
+      real(DP) :: k, ww(ixmax), xx(ixmax),kfact
       real(DP) :: alpha
       real(DP) :: pk_B111, pk_B112, pk_B121
       real(DP) :: pk_B122, pk_B211, pk_B212
       real(DP) :: pk_B221, pk_B222, pk_B312
       real(DP) :: pk_B321, pk_B322, pk_B422
       real(DP) :: pk_B1, pk_B2, pk_B3, pk_B4
+      real(DP) ::  pk_A11, pk_A12, pk_A22
+      real(DP) ::  pk_A23, pk_A33
+      real(DP) ::  pk_tA11, pk_tA12, pk_tA22
+      real(DP) ::  pk_tA23, pk_tA33
+      real(DP) ::  pk_aa11, pk_aa12, pk_aa22
+      real(DP) ::  pk_aa23, pk_aa33
+      real(DP) :: pk_A1, pk_A2, pk_A3
+      real(DP) :: fact10,fact20,fact30,fact40
+      real(DP) :: fact12,fact22,fact32,fact42
+      real(DP) :: fact14,fact24,fact34,fact44
 
       kmin = ak(1)
       kmax = ak(nk) 
 
-      do ik=1, nk
+      pk_B111 = 0.0d0
+      pk_B112 = 0.0d0
+      pk_B121 = 0.0d0
+      pk_B122 = 0.0d0
+      pk_B211 = 0.0d0
+      pk_B212 = 0.0d0
+      pk_B221 = 0.0d0
+      pk_B222 = 0.0d0
+      pk_B312 = 0.0d0
+      pk_B321 = 0.0d0
+      pk_B322 = 0.0d0
+      pk_B422 = 0.0d0
+      pk_B1 = 0.0d0
+      pk_B2 = 0.0d0
+      pk_B3 = 0.0d0
+      pk_B4 = 0.0d0
 
-         pk_B111 = 0.0d0
-         pk_B112 = 0.0d0
-         pk_B121 = 0.0d0
-         pk_B122 = 0.0d0
-         pk_B211 = 0.0d0
-         pk_B212 = 0.0d0
-         pk_B221 = 0.0d0
-         pk_B222 = 0.0d0
-         pk_B312 = 0.0d0
-         pk_B321 = 0.0d0
-         pk_B322 = 0.0d0
-         pk_B422 = 0.0d0
-         pk_B1 = 0.0d0
-         pk_B2 = 0.0d0
-         pk_B3 = 0.0d0
-         pk_B4 = 0.0d0
+      pk_A11 = 0.0d0 
+      pk_A12 = 0.0d0
+      pk_A22 = 0.0d0
+      pk_A23 = 0.0d0 
+      pk_A33 = 0.0d0
+      pk_tA11 = 0.0d0
+      pk_tA12 = 0.0d0
+      pk_tA22 = 0.0d0
+      pk_tA23 = 0.0d0
+      pk_tA33 = 0.0d0
+      pk_aa11 = 0.0d0
+      pk_aa12 = 0.0d0
+      pk_aa22 = 0.0d0
+      pk_aa23 = 0.0d0
+      pk_aa33 = 0.0d0
 
-         k = ak(ik)
+      k = ak(ik)
 
-         xmin = kmin / k
-         xmax = kmax / k
+      xmin = kmin / k
+      xmax = kmax / k
 
 !     ////// Gauss-Legendre integration //////  c
 
-         if(k.lt.0.2) isub =200 
-         if(k.ge.0.2) isub =0 
-         !       
-         call gaulegf(log(xmin),log(xmax),xx,ww,ixmax-isub)
+      if(k.lt.0.2) isub =200 
+      if(k.ge.0.2) isub =0 
+                
+      call gaulegf(log(xmin),log(xmax),xx,ww,ixmax-isub)
 
-         do ix=1, ixmax-isub
-            xx(ix)= dexp(xx(ix))
-            pk_B111 = pk_B111+ww(ix)*integ_fp(1,xx(ix),k,xmin,xmax)
-            pk_B112 = pk_B112+ww(ix)*integ_fp(2,xx(ix),k,xmin,xmax)
-            pk_B121 = pk_B121+ww(ix)*integ_fp(3,xx(ix),k,xmin,xmax)
-            pk_B122 = pk_B122+ww(ix)*integ_fp(4,xx(ix),k,xmin,xmax)
-            pk_B211 = pk_B211+ww(ix)*integ_fp(5,xx(ix),k,xmin,xmax)
-            pk_B212 = pk_B212+ww(ix)*integ_fp(6,xx(ix),k,xmin,xmax)
-            pk_B221 = pk_B221+ww(ix)*integ_fp(7,xx(ix),k,xmin,xmax)
-            pk_B222 = pk_B222+ww(ix)*integ_fp(8,xx(ix),k,xmin,xmax)
-            pk_B312 = pk_B312+ww(ix)*integ_fp(9,xx(ix),k,xmin,xmax)
-            pk_B321 = pk_B321+ww(ix)*integ_fp(10,xx(ix),k,xmin,xmax)
-            pk_B322 = pk_B322+ww(ix)*integ_fp(11,xx(ix),k,xmin,xmax)
-            pk_B422 = pk_B422+ww(ix)*integ_fp(12,xx(ix),k,xmin,xmax)
-         enddo
+      do ix=1, ixmax-isub
+        xx(ix)= dexp(xx(ix))
+        pk_B111 = pk_B111+ww(ix)*integ_fp_B(1,xx(ix),k,xmin,xmax)
+        pk_B112 = pk_B112+ww(ix)*integ_fp_B(2,xx(ix),k,xmin,xmax)
+        pk_B121 = pk_B121+ww(ix)*integ_fp_B(3,xx(ix),k,xmin,xmax)
+        pk_B122 = pk_B122+ww(ix)*integ_fp_B(4,xx(ix),k,xmin,xmax)
+        pk_B211 = pk_B211+ww(ix)*integ_fp_B(5,xx(ix),k,xmin,xmax)
+        pk_B212 = pk_B212+ww(ix)*integ_fp_B(6,xx(ix),k,xmin,xmax)
+        pk_B221 = pk_B221+ww(ix)*integ_fp_B(7,xx(ix),k,xmin,xmax)
+        pk_B222 = pk_B222+ww(ix)*integ_fp_B(8,xx(ix),k,xmin,xmax)
+        pk_B312 = pk_B312+ww(ix)*integ_fp_B(9,xx(ix),k,xmin,xmax)
+        pk_B321 = pk_B321+ww(ix)*integ_fp_B(10,xx(ix),k,xmin,xmax)
+        pk_B322 = pk_B322+ww(ix)*integ_fp_B(11,xx(ix),k,xmin,xmax)
+        pk_B422 = pk_B422+ww(ix)*integ_fp_B(12,xx(ix),k,xmin,xmax)
+        pk_A11 = pk_A11+ww(ix)*integ_fp_A(1,xx(ix),k,xmin,xmax)
+        pk_A12 = pk_A12+ww(ix)*integ_fp_A(2,xx(ix),k,xmin,xmax)
+        pk_A22 = pk_A22+ww(ix)*integ_fp_A(3,xx(ix),k,xmin,xmax)
+        pk_A23 = pk_A23+ww(ix)*integ_fp_A(4,xx(ix),k,xmin,xmax)
+        pk_A33 = pk_A33+ww(ix)*integ_fp_A(5,xx(ix),k,xmin,xmax)     
+        pk_tA11 = pk_tA11+ww(ix)*integ_fp_A(6,xx(ix),k,xmin,xmax)
+        pk_tA12 = pk_tA12+ww(ix)*integ_fp_A(7,xx(ix),k,xmin,xmax)
+        pk_tA22 = pk_tA22+ww(ix)*integ_fp_A(8,xx(ix),k,xmin,xmax)
+        pk_tA23 = pk_tA23+ww(ix)*integ_fp_A(9,xx(ix),k,xmin,xmax)
+        pk_tA33 = pk_tA33+ww(ix)*integ_fp_A(10,xx(ix),k,xmin,xmax)
+        pk_aa11 = pk_aa11+ww(ix)*integ_fp_A(11,xx(ix),k,xmin,xmax)
+        pk_aa12 = pk_aa12+ww(ix)*integ_fp_A(12,xx(ix),k,xmin,xmax)
+        pk_aa22 = pk_aa22+ww(ix)*integ_fp_A(13,xx(ix),k,xmin,xmax)
+        pk_aa23 = pk_aa23+ww(ix)*integ_fp_A(14,xx(ix),k,xmin,xmax)
+        pk_aa33 = pk_aa33+ww(ix)*integ_fp_A(15,xx(ix),k,xmin,xmax)
+      enddo
 
-         pk_B111 = 2.d0 * pk_B111 * k**3 / (2.*pi)**2
-         pk_B112 = - 2.d0 * pk_B112 * k**3 / (2.*pi)**2
-         pk_B121 = - 2.d0 * pk_B121 * k**3 / (2.*pi)**2
-         pk_B122 = 2.d0 * pk_B122 * k**3 / (2.*pi)**2
-         pk_B211 = 2.d0 * pk_B211 * k**3 / (2.*pi)**2
-         pk_B212 = - 2.d0 * pk_B212 * k**3 / (2.*pi)**2
-         pk_B221 = - 2.d0 * pk_B221 * k**3 / (2.*pi)**2
-         pk_B222 = 2.d0 * pk_B222 * k**3 / (2.*pi)**2
-         pk_B312 = - 2.d0 * pk_B312 * k**3 / (2.*pi)**2
-         pk_B321 = - 2.d0 * pk_B321 * k**3 / (2.*pi)**2
-         pk_B322 = 2.d0 * pk_B322 * k**3 / (2.*pi)**2
-         pk_B422 = 2.d0 * pk_B422 * k**3 / (2.*pi)**2
+      kfact = k**3 / (2.*pi)**2
 
-         !write(6,'(i4,1p4e18.10)') ik,k,pk(ik),pk_B111(ik),pk_B112(ik)
+      pk_B111 = 2.d0 * pk_B111 * kfact
+      pk_B112 = - 2.d0 * pk_B112 * kfact
+      pk_B121 = - 2.d0 * pk_B121 * kfact
+      pk_B122 = 2.d0 * pk_B122 * kfact
+      pk_B211 = 2.d0 * pk_B211 * kfact
+      pk_B212 = - 2.d0 * pk_B212 * kfact
+      pk_B221 = - 2.d0 * pk_B221 * kfact
+      pk_B222 = 2.d0 * pk_B222 * kfact
+      pk_B312 = - 2.d0 * pk_B312 * kfact
+      pk_B321 = - 2.d0 * pk_B321 * kfact
+      pk_B322 = 2.d0 * pk_B322 * kfact
+      pk_B422 = 2.d0 * pk_B422 * kfact
+      pk_A11 = 2.d0 * pk_A11 * kfact
+      pk_A12 = 2.d0 * pk_A12 * kfact
+      pk_A22 = 2.d0 * pk_A22 * kfact
+      pk_A23 = 2.d0 * pk_A23 * kfact
+      pk_A33 = 2.d0 * pk_A33 * kfact
+      pk_tA11 = 2.d0 * pk_tA11 * kfact
+      pk_tA12 = 2.d0 * pk_tA12 * kfact
+      pk_tA22 = 2.d0 * pk_tA22 * kfact
+      pk_tA23 = 2.d0 * pk_tA23 * kfact
+      pk_tA33 = 2.d0 * pk_tA33 * kfact
+      pk_aa11 = 2.d0 * pk_aa11 * kfact
+      pk_aa12 = 2.d0 * pk_aa12 * kfact
+      pk_aa22 = 2.d0 * pk_aa22 * kfact
+      pk_aa23 = 2.d0 * pk_aa23 * kfact
+      pk_aa33 = 2.d0 * pk_aa33 * kfact
+
+      !write(6,'(i4,1p4e18.10)') ik,k,pk(ik),pk_B111(ik),pk_B112(ik)
          
-         pk_B1 = ff**2*pk_B111 + ff**3*pk_B112 + ff**3*pk_B121 + ff**4*pk_B122
-         pk_B2 = ff**2*pk_B211 + ff**3*pk_B212 + ff**3*pk_B221 + ff**4*pk_B222
-         pk_B3 = ff**3*pk_B312 + ff**3*pk_B321 + ff**4*pk_B322
-         pk_B4 = ff**4*pk_B422
+      pk_B1 = ff**2*pk_B111 + ff**3*pk_B112 + ff**3*pk_B121 + ff**4*pk_B122
+      pk_B2 = ff**2*pk_B211 + ff**3*pk_B212 + ff**3*pk_B221 + ff**4*pk_B222
+      pk_B3 = ff**3*pk_B312 + ff**3*pk_B321 + ff**4*pk_B322
+      pk_B4 = ff**4*pk_B422
 
-         alpha = (k*ff*sigmav)**2.0
+      pk_A1 = ff * (pk_A11 + pk_tA11 + pk_aa11) + ff*ff * (pk_A12 + pk_tA12 + pk_aa12) 
+      pk_A2 = ff*ff * (pk_A22 + pk_tA22 + pk_aa22) + ff*ff*ff * (pk_A23 + pk_tA23 + pk_aa23) 
+      pk_A3 = ff*ff*ff * (pk_A33 + pk_tA33 + pk_aa33) 
 
-         pk0corr(ik) = fact(1,0,alpha) * pk_B1 &
-              + fact(2,0,alpha) * pk_B2 + fact(3,0,alpha) * pk_B3 &
-              + fact(4,0,alpha) * pk_B4
+      alpha = (k*ff*sigmav)**2.0
+
+      fact10 = fact(1,0,alpha) 
+      fact20 = fact(2,0,alpha)
+      fact30 = fact(3,0,alpha)
+      fact40 = fact(4,0,alpha)
+      fact12 = fact(1,2,alpha) 
+      fact22 = fact(2,2,alpha)
+      fact32 = fact(3,2,alpha)
+      fact42 = fact(4,2,alpha)
+      fact14 = fact(1,4,alpha) 
+      fact24 = fact(2,4,alpha)
+      fact34 = fact(3,4,alpha)
+      fact44 = fact(4,4,alpha)
+
+      pk0corr_B(ik) = fact10 * pk_B1 + fact20 * pk_B2 + fact30 * pk_B3 + fact40 * pk_B4
+      pk2corr_B(ik) = fact12 * pk_B1 + fact22 * pk_B2 + fact32 * pk_B3 + fact42 * pk_B4
+      pk4corr_B(ik) = fact14 * pk_B1 + fact24 * pk_B2 + fact34 * pk_B3 + fact44 * pk_B4
+
+      pk0corr_A(ik) = fact10 * pk_A1 + fact20 * pk_A2 + fact30 * pk_A3 
+      pk2corr_A(ik) = fact12 * pk_A1 + fact22 * pk_A2 + fact32 * pk_A3
+      pk4corr_A(ik) = fact14 * pk_A1 + fact24 * pk_A2 + fact34 * pk_A3
          
-         pk2corr(ik) = fact(1,2,alpha) * pk_B1 &
-              + fact(2,2,alpha) * pk_B2 + fact(3,2,alpha) * pk_B3 &
-              + fact(4,2,alpha) * pk_B4
-
-         pk4corr(ik) = fact(1,4,alpha) * pk_B1 &
-              + fact(2,4,alpha) * pk_B2 + fact(3,4,alpha) * pk_B3 &
-              + fact(4,4,alpha) * pk_B4
+      write(6,'(i4,1p8e18.10)') ik,k,pk0corr_B(ik),pk2corr_B(ik),pk4corr_B(ik),&
+          pk0corr_A(ik),pk2corr_A(ik),pk4corr_A(ik)
          
-         write(6,'(i4,1p4e18.10)') ik,k,pk0corr(ik),pk2corr(ik),pk4corr(ik)
-         
-      end do
-
     end subroutine calc_correction
 
 ! ******************************************************* 

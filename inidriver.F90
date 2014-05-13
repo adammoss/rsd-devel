@@ -17,7 +17,7 @@ program driver
   ff = 0.492
   sigmav = 6.07
 
-  call calc_correction()
+  call calc_correction(74)
 
   call timer_stop()
   call timer_elapsed(elapsed_time)
