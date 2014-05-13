@@ -16,40 +16,13 @@ module pk_rsd
   real(DP) :: growth ! Growth factor 
   real(DP) :: ff ! Growth rate 
 
-  real(DP), allocatable :: pk_B111(:), pk_B112(:), pk_B121(:)
-  real(DP), allocatable :: pk_B122(:), pk_B211(:), pk_B212(:)
-  real(DP), allocatable :: pk_B221(:), pk_B222(:), pk_B312(:)
-  real(DP), allocatable :: pk_B321(:), pk_B322(:), pk_B422(:)
-  real(DP), allocatable :: pk_B1(:), pk_B2(:), pk_B3(:), pk_B4(:)
-  real(DP), allocatable :: pk0corr(:),pk2corr(:),pk4corr(:)
-
+  real(DP), allocatable :: pk0corr(:), pk2corr(:), pk4corr(:)
 
 contains
    
   subroutine init_pk()
     implicit none
 
-    allocate(pk_B111(nk),pk_B112(nk),pk_B121(nk))
-    allocate(pk_B122(nk),pk_B211(nk),pk_B212(nk))
-    allocate(pk_B221(nk),pk_B222(nk),pk_B312(nk))
-    allocate(pk_B321(nk),pk_B322(nk),pk_B422(nk))
-    allocate(pk_B1(nk),pk_B2(nk),pk_B3(nk),pk_B4(nk))
-    pk_B111(:) = 0.0d0
-    pk_B112(:) = 0.0d0
-    pk_B121(:) = 0.0d0
-    pk_B122(:) = 0.0d0
-    pk_B211(:) = 0.0d0
-    pk_B212(:) = 0.0d0
-    pk_B221(:) = 0.0d0
-    pk_B222(:) = 0.0d0
-    pk_B312(:) = 0.0d0
-    pk_B321(:) = 0.0d0
-    pk_B322(:) = 0.0d0
-    pk_B422(:) = 0.0d0
-    pk_B1(:) = 0.0d0
-    pk_B2(:) = 0.0d0
-    pk_B3(:) = 0.0d0
-    pk_B4(:) = 0.0d0
     allocate(pk0corr(nk),pk2corr(nk),pk4corr(nk))
     pk0corr(:) = 0.0d0
     pk2corr(:) = 0.0d0
@@ -221,15 +194,37 @@ contains
       integer ik, isub
       integer ix, ixmax
       parameter(ixmax=600)
-      
       real(DP) :: kmin, kmax, xmin, xmax, mumin, mumax
       real(DP) :: k, ww(ixmax), xx(ixmax)
       real(DP) :: alpha
+      real(DP) :: pk_B111, pk_B112, pk_B121
+      real(DP) :: pk_B122, pk_B211, pk_B212
+      real(DP) :: pk_B221, pk_B222, pk_B312
+      real(DP) :: pk_B321, pk_B322, pk_B422
+      real(DP) :: pk_B1, pk_B2, pk_B3, pk_B4
 
       kmin = ak(1)
       kmax = ak(nk) 
 
       do ik=1, nk
+
+         pk_B111 = 0.0d0
+         pk_B112 = 0.0d0
+         pk_B121 = 0.0d0
+         pk_B122 = 0.0d0
+         pk_B211 = 0.0d0
+         pk_B212 = 0.0d0
+         pk_B221 = 0.0d0
+         pk_B222 = 0.0d0
+         pk_B312 = 0.0d0
+         pk_B321 = 0.0d0
+         pk_B322 = 0.0d0
+         pk_B422 = 0.0d0
+         pk_B1 = 0.0d0
+         pk_B2 = 0.0d0
+         pk_B3 = 0.0d0
+         pk_B4 = 0.0d0
+
          k = ak(ik)
 
          xmin = kmin / k
@@ -244,56 +239,53 @@ contains
 
          do ix=1, ixmax-isub
             xx(ix)= dexp(xx(ix))
-            pk_B111(ik) = pk_B111(ik)+ww(ix)*integ_fp(1,xx(ix),k,xmin,xmax)
-            pk_B112(ik) = pk_B112(ik)+ww(ix)*integ_fp(2,xx(ix),k,xmin,xmax)
-            pk_B121(ik) = pk_B121(ik)+ww(ix)*integ_fp(3,xx(ix),k,xmin,xmax)
-            pk_B122(ik) = pk_B122(ik)+ww(ix)*integ_fp(4,xx(ix),k,xmin,xmax)
-            pk_B211(ik) = pk_B211(ik)+ww(ix)*integ_fp(5,xx(ix),k,xmin,xmax)
-            pk_B212(ik) = pk_B212(ik)+ww(ix)*integ_fp(6,xx(ix),k,xmin,xmax)
-            pk_B221(ik) = pk_B221(ik)+ww(ix)*integ_fp(7,xx(ix),k,xmin,xmax)
-            pk_B222(ik) = pk_B222(ik)+ww(ix)*integ_fp(8,xx(ix),k,xmin,xmax)
-            pk_B312(ik) = pk_B312(ik)+ww(ix)*integ_fp(9,xx(ix),k,xmin,xmax)
-            pk_B321(ik) = pk_B321(ik)+ww(ix)*integ_fp(10,xx(ix),k,xmin,xmax)
-            pk_B322(ik) = pk_B322(ik)+ww(ix)*integ_fp(11,xx(ix),k,xmin,xmax)
-            pk_B422(ik) = pk_B422(ik)+ww(ix)*integ_fp(12,xx(ix),k,xmin,xmax)
+            pk_B111 = pk_B111+ww(ix)*integ_fp(1,xx(ix),k,xmin,xmax)
+            pk_B112 = pk_B112+ww(ix)*integ_fp(2,xx(ix),k,xmin,xmax)
+            pk_B121 = pk_B121+ww(ix)*integ_fp(3,xx(ix),k,xmin,xmax)
+            pk_B122 = pk_B122+ww(ix)*integ_fp(4,xx(ix),k,xmin,xmax)
+            pk_B211 = pk_B211+ww(ix)*integ_fp(5,xx(ix),k,xmin,xmax)
+            pk_B212 = pk_B212+ww(ix)*integ_fp(6,xx(ix),k,xmin,xmax)
+            pk_B221 = pk_B221+ww(ix)*integ_fp(7,xx(ix),k,xmin,xmax)
+            pk_B222 = pk_B222+ww(ix)*integ_fp(8,xx(ix),k,xmin,xmax)
+            pk_B312 = pk_B312+ww(ix)*integ_fp(9,xx(ix),k,xmin,xmax)
+            pk_B321 = pk_B321+ww(ix)*integ_fp(10,xx(ix),k,xmin,xmax)
+            pk_B322 = pk_B322+ww(ix)*integ_fp(11,xx(ix),k,xmin,xmax)
+            pk_B422 = pk_B422+ww(ix)*integ_fp(12,xx(ix),k,xmin,xmax)
          enddo
 
-         pk_B111(ik) = 2.d0 * pk_B111(ik) * k**3 / (2.*pi)**2
-         pk_B112(ik) = - 2.d0 * pk_B112(ik) * k**3 / (2.*pi)**2
-         pk_B121(ik) = - 2.d0 * pk_B121(ik) * k**3 / (2.*pi)**2
-         pk_B122(ik) = 2.d0 * pk_B122(ik) * k**3 / (2.*pi)**2
-         pk_B211(ik) = 2.d0 * pk_B211(ik) * k**3 / (2.*pi)**2
-         pk_B212(ik) = - 2.d0 * pk_B212(ik) * k**3 / (2.*pi)**2
-         pk_B221(ik) = - 2.d0 * pk_B221(ik) * k**3 / (2.*pi)**2
-         pk_B222(ik) = 2.d0 * pk_B222(ik) * k**3 / (2.*pi)**2
-         pk_B312(ik) = - 2.d0 * pk_B312(ik) * k**3 / (2.*pi)**2
-         pk_B321(ik) = - 2.d0 * pk_B321(ik) * k**3 / (2.*pi)**2
-         pk_B322(ik) = 2.d0 * pk_B322(ik) * k**3 / (2.*pi)**2
-         pk_B422(ik) = 2.d0 * pk_B422(ik) * k**3 / (2.*pi)**2
+         pk_B111 = 2.d0 * pk_B111 * k**3 / (2.*pi)**2
+         pk_B112 = - 2.d0 * pk_B112 * k**3 / (2.*pi)**2
+         pk_B121 = - 2.d0 * pk_B121 * k**3 / (2.*pi)**2
+         pk_B122 = 2.d0 * pk_B122 * k**3 / (2.*pi)**2
+         pk_B211 = 2.d0 * pk_B211 * k**3 / (2.*pi)**2
+         pk_B212 = - 2.d0 * pk_B212 * k**3 / (2.*pi)**2
+         pk_B221 = - 2.d0 * pk_B221 * k**3 / (2.*pi)**2
+         pk_B222 = 2.d0 * pk_B222 * k**3 / (2.*pi)**2
+         pk_B312 = - 2.d0 * pk_B312 * k**3 / (2.*pi)**2
+         pk_B321 = - 2.d0 * pk_B321 * k**3 / (2.*pi)**2
+         pk_B322 = 2.d0 * pk_B322 * k**3 / (2.*pi)**2
+         pk_B422 = 2.d0 * pk_B422 * k**3 / (2.*pi)**2
 
          !write(6,'(i4,1p4e18.10)') ik,k,pk(ik),pk_B111(ik),pk_B112(ik)
          
-         pk_B1(ik) = ff**2*pk_B111(ik) + ff**3*pk_B112(ik) + &
-              ff**3*pk_B121(ik) + ff**4*pk_B122(ik)
-         pk_B2(ik) = ff**2*pk_B211(ik) + ff**3*pk_B212(ik) + &
-              ff**3*pk_B221(ik) + ff**4*pk_B222(ik)
-         pk_B3(ik) = ff**3*pk_B312(ik) + ff**3*pk_B321(ik) + &
-              ff**4*pk_B322(ik)
-         pk_B4(ik) = ff**4*pk_B422(ik)
+         pk_B1 = ff**2*pk_B111 + ff**3*pk_B112 + ff**3*pk_B121 + ff**4*pk_B122
+         pk_B2 = ff**2*pk_B211 + ff**3*pk_B212 + ff**3*pk_B221 + ff**4*pk_B222
+         pk_B3 = ff**3*pk_B312 + ff**3*pk_B321 + ff**4*pk_B322
+         pk_B4 = ff**4*pk_B422
 
          alpha = (k*ff*sigmav)**2.0
 
-         pk0corr(ik) = fact(1,0,alpha) * pk_B1(ik) &
-              + fact(2,0,alpha) * pk_B2(ik) + fact(3,0,alpha) * pk_B3(ik) &
-              + fact(4,0,alpha) * pk_B4(ik)
+         pk0corr(ik) = fact(1,0,alpha) * pk_B1 &
+              + fact(2,0,alpha) * pk_B2 + fact(3,0,alpha) * pk_B3 &
+              + fact(4,0,alpha) * pk_B4
          
-         pk2corr(ik) = fact(1,2,alpha) * pk_B1(ik) &
-              + fact(2,2,alpha) * pk_B2(ik) + fact(3,2,alpha) * pk_B3(ik) &
-              + fact(4,2,alpha) * pk_B4(ik)
+         pk2corr(ik) = fact(1,2,alpha) * pk_B1 &
+              + fact(2,2,alpha) * pk_B2 + fact(3,2,alpha) * pk_B3 &
+              + fact(4,2,alpha) * pk_B4
 
-         pk4corr(ik) = fact(1,4,alpha) * pk_B1(ik) &
-              + fact(2,4,alpha) * pk_B2(ik) + fact(3,4,alpha) * pk_B3(ik) &
-              + fact(4,4,alpha) * pk_B4(ik)
+         pk4corr(ik) = fact(1,4,alpha) * pk_B1 &
+              + fact(2,4,alpha) * pk_B2 + fact(3,4,alpha) * pk_B3 &
+              + fact(4,4,alpha) * pk_B4
          
          write(6,'(i4,1p4e18.10)') ik,k,pk0corr(ik),pk2corr(ik),pk4corr(ik)
          
@@ -361,9 +353,6 @@ contains
       fact = fact * (1.d0 + (-1.d0)**(2.*nn)) 
       
     end function fact
-
-
-
 
   end module pk_rsd
 
