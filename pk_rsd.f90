@@ -15,6 +15,8 @@ module pk_rsd
   real(DP) :: ff ! Growth rate 
   real(DP) :: sigma_8 = 0.0d0
 
+  real(DP) :: b1
+
   real(DP), allocatable :: pk0dd(:),pk2dd(:),pk4dd(:)
   real(DP), allocatable :: pk0dt(:),pk2dt(:),pk4dt(:)
   real(DP), allocatable :: pk0tt(:),pk2tt(:),pk4tt(:)
@@ -387,6 +389,7 @@ contains
       real(DP) :: fact00,fact10,fact20,fact30,fact40
       real(DP) :: fact02,fact12,fact22,fact32,fact42
       real(DP) :: fact04,fact14,fact24,fact34,fact44
+      real(DP) :: ptt,pdt,pdd
 
       kmin = ak(1)
       kmax = ak(nk) 
@@ -469,6 +472,8 @@ contains
 
       kfact = k**3 / (2.*pi)**2
 
+      ! I am a little unsure about the factor of 2 here 
+
       pk_B111 = 2.d0 * pk_B111 * kfact
       pk_B112 = - 2.d0 * pk_B112 * kfact
       pk_B121 = - 2.d0 * pk_B121 * kfact
@@ -529,29 +534,33 @@ contains
       fact44 = fact(4,4,alpha)
 
       pk_val = find_pk(k)
+      
+      pdd = pk_val*b1**2
+      pdt = pk_val*b1
+      ptt = pk_val
 
-      pk0dd(ik) = fact00*pk_val
-      pk2dd(ik) = fact02*pk_val
-      pk4dd(ik) = fact04*pk_val
+      pk0dd(ik) = fact00*pdd
+      pk2dd(ik) = fact02*pdd
+      pk4dd(ik) = fact04*pdd
 
-      pk0dt(ik) = 2*ff*fact10*pk_val
-      pk2dt(ik) = 2*ff*fact12*pk_val
-      pk4dt(ik) = 2*ff*fact14*pk_val
+      pk0dt(ik) = 2*ff*fact10*pdt
+      pk2dt(ik) = 2*ff*fact12*pdt
+      pk4dt(ik) = 2*ff*fact14*pdt
 
-      pk0tt(ik) = ff**2*fact20*pk_val
-      pk2tt(ik) = ff**2*fact22*pk_val
-      pk4tt(ik) = ff**2*fact24*pk_val
+      pk0tt(ik) = ff**2*fact20*ptt
+      pk2tt(ik) = ff**2*fact22*ptt
+      pk4tt(ik) = ff**2*fact24*ptt
 
-      pk0corr_B(ik) = fact10 * pk_B1 + fact20 * pk_B2 + fact30 * pk_B3 + fact40 * pk_B4
-      pk2corr_B(ik) = fact12 * pk_B1 + fact22 * pk_B2 + fact32 * pk_B3 + fact42 * pk_B4
-      pk4corr_B(ik) = fact14 * pk_B1 + fact24 * pk_B2 + fact34 * pk_B3 + fact44 * pk_B4
+      pk0corr_B(ik) = (fact10 * pk_B1 + fact20 * pk_B2 + fact30 * pk_B3 + fact40 * pk_B4)*b1**4.0
+      pk2corr_B(ik) = (fact12 * pk_B1 + fact22 * pk_B2 + fact32 * pk_B3 + fact42 * pk_B4)*b1**4.0
+      pk4corr_B(ik) = (fact14 * pk_B1 + fact24 * pk_B2 + fact34 * pk_B3 + fact44 * pk_B4)*b1**4.0
 
-      pk0corr_A(ik) = fact10 * pk_A1 + fact20 * pk_A2 + fact30 * pk_A3 
-      pk2corr_A(ik) = fact12 * pk_A1 + fact22 * pk_A2 + fact32 * pk_A3
-      pk4corr_A(ik) = fact14 * pk_A1 + fact24 * pk_A2 + fact34 * pk_A3
+      pk0corr_A(ik) = (fact10 * pk_A1 + fact20 * pk_A2 + fact30 * pk_A3)*b1**3.0
+      pk2corr_A(ik) = (fact12 * pk_A1 + fact22 * pk_A2 + fact32 * pk_A3)*b1**3.0
+      pk4corr_A(ik) = (fact14 * pk_A1 + fact24 * pk_A2 + fact34 * pk_A3)*b1**3.0
          
-      write(6,'(i4,1p100e11.3)') ik,k,pk0dd(ik),pk2dd(ik),pk4dd(ik),pk0dt(ik),pk2dt(ik),pk4dt(ik),pk0tt(ik),pk2tt(ik),pk4tt(ik), &
-          pk0corr_B(ik),pk2corr_B(ik),pk4corr_B(ik),pk0corr_A(ik),pk2corr_A(ik),pk4corr_A(ik)
+      !write(6,'(i4,1p100e11.3)') ik,k,pk0dd(ik),pk2dd(ik),pk4dd(ik),pk0dt(ik),pk2dt(ik),pk4dt(ik),pk0tt(ik),pk2tt(ik),pk4tt(ik), &
+      !    pk0corr_B(ik),pk2corr_B(ik),pk4corr_B(ik),pk0corr_A(ik),pk2corr_A(ik),pk4corr_A(ik)
          
     end subroutine calc_correction
 
