@@ -4,7 +4,7 @@ module pk_rsd
   integer, parameter :: DP = kind(1.0D0)
   real(DP), parameter :: pi = 3.1415926535897932384626433832795d0, twopi=2*pi, fourpi=4*pi
      
-  integer :: nk = 100
+  integer :: nk = 200
   real(DP), allocatable :: ak(:), pk(:)
   
   integer :: ik_max
@@ -13,6 +13,7 @@ module pk_rsd
   real(DP) :: sigmav ! Sigma_v
   real(DP) :: growth ! Growth factor 
   real(DP) :: ff ! Growth rate 
+  real(DP) :: sigma_8 = 0.0d0
 
   real(DP), allocatable :: pk0dd(:),pk2dd(:),pk4dd(:)
   real(DP), allocatable :: pk0dt(:),pk2dt(:),pk4dt(:)
@@ -56,10 +57,10 @@ contains
 !     created by CAMB code. 
 
       implicit none
-      character(len=100) filename
+      character(len=200) filename
 
       integer ikmax
-      parameter(ikmax=3000)
+      parameter(ikmax=10000)
       integer ik, ikk
       real(DP) :: ak_temp(ikmax), pk_temp(ikmax), dlnk
       
@@ -76,12 +77,7 @@ contains
       ak_camb(1:ik_max) = ak_temp(1:ik_max)
       pk_camb(1:ik_max) = pk_temp(1:ik_max)
 
-      !******************************************
-      ! REMOVE THIS
-
-      pk_camb(:)=pk_camb(:)*3.83
-
-      !**************************************
+      if (sigma_8 .ne. 0.0d0) call normalization_trapez(8.0d0)
 
       dlnk=log(ak_temp(ik-1)/ak_temp(1))/dble(nk-1)
 
@@ -97,6 +93,43 @@ contains
       call init_pk()
 
     end subroutine load_matterpower_data
+
+! ******************************************************* 
+
+    subroutine normalization_trapez(r_th)
+      implicit none
+      real(DP) r_th
+      integer ik
+      real(DP) :: W_TH,sigma_a,sigma_b,x,const
+
+      x = ak_camb(1) * r_th
+      if(x.lt.1.d-3) then
+         W_TH = 1.d0 - x*x / 10.d0 + x**4 / 280.d0 
+      else
+         W_TH = 3.d0 * (sin(x) - x * cos(x))/x/x/x
+      endif
+      sigma_a = W_TH * W_TH * pk_camb(1) * ak_camb(1) * ak_camb(1)
+      sigma_a = sigma_a / (2.d0 * pi * pi)
+
+      const = 0.d0 
+      do ik=2, ik_max
+         x = ak_camb(ik) * r_th
+         if(x.lt.1.d-3) then
+            W_TH = 1.d0 - x*x / 10.d0 + x**4 / 280.d0 
+         else
+            W_TH = 3.d0 * (sin(x) - x * cos(x))/x/x/x
+         endif
+         sigma_b = W_TH * W_TH * pk_camb(ik) * ak_camb(ik) * ak_camb(ik) 
+         sigma_b = sigma_b / (2.d0 * pi * pi)
+         const = const + (sigma_a + sigma_b) * ( ak_camb(ik) - ak_camb(ik-1) )/ 2.d0
+         sigma_a = sigma_b
+      enddo
+
+      write(*,*) 'Sigma_8 = ',sqrt(const)
+      pk_camb(:) = pk_camb(:) * (sigma_8**2.0)/const
+      write(*,*) 'Rescaling P(k) to sigma_8 = ',sigma_8
+
+    end subroutine normalization_trapez
 
 ! ******************************************************* 
 
@@ -524,14 +557,42 @@ contains
 
 ! ******************************************************* 
 
-      subroutine calc_pkred
-        
+    subroutine calc_pkred(filename)
+  
 !     Summing up all contributions to redshift P(k) in PT
 !     and calculating monopole, quadrupole and hexadecapole
 !     spectra
 
+      character(len=200) filename
+      integer ik
+      
+      !$OMP PARAllEl DO DEFAUlT(SHARED),SCHEDUlE(DYNAMIC) &
+      !$OMP & PRIVATE(ik)
+      do ik=1,nk
+         call calc_correction(ik)
+      end do
+      !$OMP END PARAllEl DO
+      
+      open(unit=11,file=trim(filename)//'_l0.dat',status='unknown')
+      do ik=1,nk
+         write(11,'(1p100e11.3)') ak(ik),pk0dd(ik),pk0dt(ik),pk0tt(ik),pk0corr_A(ik),pk0corr_B(ik)
+      end do
+      close(11)
 
-      end subroutine calc_pkred
+      open(unit=11,file=trim(filename)//'_l2.dat',status='unknown')
+      do ik=1,nk
+         write(11,'(1p100e11.3)') ak(ik),pk2dd(ik),pk2dt(ik),pk2tt(ik),pk2corr_A(ik),pk2corr_B(ik)
+      end do
+      close(11)
+
+      open(unit=11,file=trim(filename)//'_l4.dat',status='unknown')
+      do ik=1,nk
+         write(11,'(1p100e11.3)') ak(ik),pk4dd(ik),pk4dt(ik),pk4tt(ik),pk4corr_A(ik),pk4corr_B(ik)
+      end do
+      close(11)
+
+
+    end subroutine calc_pkred
 
 ! ************************************************ 
 
