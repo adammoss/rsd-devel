@@ -1,5 +1,3 @@
-! Code to compute redshift space anisotropic P(k) 
-
 module pk_rsd 
   use am_routines
   implicit none
@@ -16,6 +14,9 @@ module pk_rsd
   real(DP) :: growth ! Growth factor 
   real(DP) :: ff ! Growth rate 
 
+  real(DP), allocatable :: pk0dd(:),pk2dd(:),pk4dd(:)
+  real(DP), allocatable :: pk0dt(:),pk2dt(:),pk4dt(:)
+  real(DP), allocatable :: pk0tt(:),pk2tt(:),pk4tt(:)
   real(DP), allocatable :: pk0corr_A(:), pk2corr_A(:), pk4corr_A(:)
   real(DP), allocatable :: pk0corr_B(:), pk2corr_B(:), pk4corr_B(:)
 
@@ -24,8 +25,20 @@ contains
   subroutine init_pk()
     implicit none
 
+    allocate(pk0dd(nk),pk2dd(nk),pk4dd(nk))
+    allocate(pk0dt(nk),pk2dt(nk),pk4dt(nk))
+    allocate(pk0tt(nk),pk2tt(nk),pk4tt(nk))
     allocate(pk0corr_A(nk),pk2corr_A(nk),pk4corr_A(nk))
     allocate(pk0corr_B(nk),pk2corr_B(nk),pk4corr_B(nk))
+    pk0dd(:) = 0.0d0
+    pk2dd(:) = 0.0d0
+    pk4dd(:) = 0.0d0
+    pk0dt(:) = 0.0d0
+    pk2dt(:) = 0.0d0
+    pk4dt(:) = 0.0d0
+    pk0tt(:) = 0.0d0
+    pk2tt(:) = 0.0d0
+    pk4tt(:) = 0.0d0
     pk0corr_A(:) = 0.0d0
     pk2corr_A(:) = 0.0d0
     pk4corr_A(:) = 0.0d0
@@ -78,8 +91,8 @@ contains
          pk(ik) = find_pk(ak(ik))
       end do
 
-      write(6,*) 'ak(1)=', ak(1)
-      write(6,*) 'ak(ik_max)=', ak(nk)
+      write(6,*) 'k_min =', ak(1)
+      write(6,*) 'k_max =', ak(nk)
       
       call init_pk()
 
@@ -324,7 +337,7 @@ contains
       integer ix, ixmax
       parameter(ixmax=600)
       real(DP) :: kmin, kmax, xmin, xmax, mumin, mumax
-      real(DP) :: k, ww(ixmax), xx(ixmax),kfact
+      real(DP) :: k, ww(ixmax), xx(ixmax),kfact, pk_val
       real(DP) :: alpha
       real(DP) :: pk_B111, pk_B112, pk_B121
       real(DP) :: pk_B122, pk_B211, pk_B212
@@ -338,9 +351,9 @@ contains
       real(DP) ::  pk_aa11, pk_aa12, pk_aa22
       real(DP) ::  pk_aa23, pk_aa33
       real(DP) :: pk_A1, pk_A2, pk_A3
-      real(DP) :: fact10,fact20,fact30,fact40
-      real(DP) :: fact12,fact22,fact32,fact42
-      real(DP) :: fact14,fact24,fact34,fact44
+      real(DP) :: fact00,fact10,fact20,fact30,fact40
+      real(DP) :: fact02,fact12,fact22,fact32,fact42
+      real(DP) :: fact04,fact14,fact24,fact34,fact44
 
       kmin = ak(1)
       kmax = ak(nk) 
@@ -455,27 +468,46 @@ contains
          
       pk_B1 = ff**2*pk_B111 + ff**3*pk_B112 + ff**3*pk_B121 + ff**4*pk_B122
       pk_B2 = ff**2*pk_B211 + ff**3*pk_B212 + ff**3*pk_B221 + ff**4*pk_B222
-      pk_B3 = ff**3*pk_B312 + ff**3*pk_B321 + ff**4*pk_B322
-      pk_B4 = ff**4*pk_B422
+      pk_B3 =                 ff**3*pk_B312 + ff**3*pk_B321 + ff**4*pk_B322
+      pk_B4 =                                                 ff**4*pk_B422
 
-      pk_A1 = ff * (pk_A11 + pk_tA11 + pk_aa11) + ff*ff * (pk_A12 + pk_tA12 + pk_aa12) 
-      pk_A2 = ff*ff * (pk_A22 + pk_tA22 + pk_aa22) + ff*ff*ff * (pk_A23 + pk_tA23 + pk_aa23) 
-      pk_A3 = ff*ff*ff * (pk_A33 + pk_tA33 + pk_aa33) 
+      pk_A1 = ff*(pk_A11+pk_tA11+pk_aa11) + ff**2*(pk_A12+pk_tA12+pk_aa12) 
+      pk_A2 =                               ff**2*(pk_A22+pk_tA22+pk_aa22) + ff**3*(pk_A23+pk_tA23+pk_aa23) 
+      pk_A3 =                                                                ff**3*(pk_A33+pk_tA33+pk_aa33) 
 
       alpha = (k*ff*sigmav)**2.0
 
+      fact00 = fact(0,0,alpha) 
       fact10 = fact(1,0,alpha) 
       fact20 = fact(2,0,alpha)
       fact30 = fact(3,0,alpha)
       fact40 = fact(4,0,alpha)
+
+      fact02 = fact(0,2,alpha) 
       fact12 = fact(1,2,alpha) 
       fact22 = fact(2,2,alpha)
       fact32 = fact(3,2,alpha)
       fact42 = fact(4,2,alpha)
+
+      fact04 = fact(0,4,alpha) 
       fact14 = fact(1,4,alpha) 
       fact24 = fact(2,4,alpha)
       fact34 = fact(3,4,alpha)
       fact44 = fact(4,4,alpha)
+
+      pk_val = find_pk(k)
+
+      pk0dd(ik) = fact00*pk_val
+      pk2dd(ik) = fact02*pk_val
+      pk4dd(ik) = fact04*pk_val
+
+      pk0dt(ik) = 2*ff*fact10*pk_val
+      pk2dt(ik) = 2*ff*fact12*pk_val
+      pk4dt(ik) = 2*ff*fact14*pk_val
+
+      pk0tt(ik) = ff**2*fact20*pk_val
+      pk2tt(ik) = ff**2*fact22*pk_val
+      pk4tt(ik) = ff**2*fact24*pk_val
 
       pk0corr_B(ik) = fact10 * pk_B1 + fact20 * pk_B2 + fact30 * pk_B3 + fact40 * pk_B4
       pk2corr_B(ik) = fact12 * pk_B1 + fact22 * pk_B2 + fact32 * pk_B3 + fact42 * pk_B4
@@ -485,8 +517,8 @@ contains
       pk2corr_A(ik) = fact12 * pk_A1 + fact22 * pk_A2 + fact32 * pk_A3
       pk4corr_A(ik) = fact14 * pk_A1 + fact24 * pk_A2 + fact34 * pk_A3
          
-      write(6,'(i4,1p8e18.10)') ik,k,pk0corr_B(ik),pk2corr_B(ik),pk4corr_B(ik),&
-          pk0corr_A(ik),pk2corr_A(ik),pk4corr_A(ik)
+      write(6,'(i4,1p100e11.3)') ik,k,pk0dd(ik),pk2dd(ik),pk4dd(ik),pk0dt(ik),pk2dt(ik),pk4dt(ik),pk0tt(ik),pk2tt(ik),pk4tt(ik), &
+          pk0corr_B(ik),pk2corr_B(ik),pk4corr_B(ik),pk0corr_A(ik),pk2corr_A(ik),pk4corr_A(ik)
          
     end subroutine calc_correction
 
