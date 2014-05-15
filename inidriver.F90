@@ -24,10 +24,14 @@ program driver
 
   ! Approx z=0.57 values 
   sigmav = 4.44
-  ff = 0.785
+  !ff = 0.785
+  ff = 0.68
 
   ! Bias terms 
-  b1 = 2.0
+  b1 = 2.035
+  b2 = 0.5
+
+  write(*,*) 'P_0/P_2 = ', (1.0+2.0/3.0*ff/b1+1.0/5.0*(ff/b1)**2)/(4.0/3.0*ff/b1+4.0/7.0*(ff/b1)**2)
 
   call load_matterpower_data(pkfile) 
   call calc_pkred(outroot)

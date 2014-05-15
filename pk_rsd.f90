@@ -20,7 +20,8 @@ module pk_rsd
   real(DP) :: ff ! Growth rate 
   real(DP) :: sigma_8 = 0.0d0
 
-  real(DP) :: b1
+  ! Bias terms
+  real(DP) :: b1, b2
 
   real(DP), allocatable :: pk0dd(:),pk2dd(:),pk4dd(:)
   real(DP), allocatable :: pk0dt(:),pk2dt(:),pk4dt(:)
@@ -392,6 +393,7 @@ contains
       real(DP) :: fact02,fact12,fact22,fact32,fact42
       real(DP) :: fact04,fact14,fact24,fact34,fact44
       real(DP) :: ptt,pdt,pdd
+      real(DP) :: bias_corr1,bias_corr2
 
       kmin = ak(1)
       kmax = ak(nk) 
@@ -541,6 +543,11 @@ contains
       pdt = pk_val*b1
       ptt = pk_val
 
+      call calc_bias_corr(k,bias_corr1,bias_corr2)
+      pdd = pdd + 2.0*b1*b2*bias_corr1
+      
+      pdt = pdt + b2*bias_corr2
+   
       pk0dd(ik) = fact00*pdd
       pk2dd(ik) = fact02*pdd
       pk4dd(ik) = fact04*pdd
@@ -662,6 +669,105 @@ contains
       
     end function fact
 
+! ******************************************************* c
+
+    subroutine calc_bias_corr(k,bias_corr1,bias_corr2)
+
+      !\int d^3q /(2*pi)^3 G^(2)(k-q,q) * P(k-q) * P(q)
+
+      real(DP) :: k,kmin,kmax,xmin,xmax
+      real(DP) :: xx(ixmax), wx(ixmax),x
+      integer ix
+      real(DP) :: integ_pkcorr1, integ_pkcorr2
+      real(DP) :: bias_corr1,bias_corr2
+
+      kmin = ak(1)
+      kmax = ak(nk)
+
+      bias_corr1 = 0.0d0
+      bias_corr2 = 0.0d0
+
+      xmin = kmin / k
+      xmax = kmax / k
+
+      call gaulegf(dlog(xmin),dlog(xmax),xx,wx,ixmax)
+      
+      ! Gauss-Legendre integration over x (=q/k)
+
+      do ix=1,ixmax
+         x = dexp(xx(ix))
+         call  calc_integ_bias_corr(k,x,xmin,xmax,integ_pkcorr1, integ_pkcorr2)
+         bias_corr1 = bias_corr1 + wx(ix)*integ_pkcorr1*x**3
+         bias_corr2 = bias_corr2 + wx(ix)*integ_pkcorr2*x**3
+      end do
+      
+      bias_corr1 = 2.0*bias_corr1 * k**3 / (2.d0*pi)**2
+      bias_corr2 = 2.0*bias_corr2 * k**3 / (2.d0*pi)**2
+
+      !write(*,'(10E15.5)') k,find_pk(k),bias_corr1,bias_corr2
+
+    end subroutine calc_bias_corr
+
+    subroutine calc_integ_bias_corr(k,x,xmin,xmax,integ_pkcorr1, integ_pkcorr2)
+      
+      implicit none
+      real(DP) :: k,x,xmin,xmax
+      real(DP) :: integ_pkcorr1, integ_pkcorr2
+      real(DP) :: mumin,mumax
+      real(DP) :: mmu(imu_max), wmu(imu_max)
+      real(DP) :: kernel1,kernel2
+      integer :: imu
+      
+      integ_pkcorr1 = 0.0d0
+      integ_pkcorr2 = 0.0d0
+      
+      mumin = max(-1.d0, (1.d0+x**2-xmax**2)/2.d0/x)
+      mumax = min( 1.d0, (1.d0+x**2-xmin**2)/2.d0/x)
+
+      if(x.ge.0.5d0) mumax= 0.5d0/x
+      
+      call gaulegf(mumin, mumax, mmu, wmu, imu_max)
+
+      do imu=1, imu_max
+         call kernel_pkcorr(k,x, mmu(imu), kernel1, kernel2)
+         integ_pkcorr1 = integ_pkcorr1 + wmu(imu) * kernel1
+         integ_pkcorr2 = integ_pkcorr2 + wmu(imu) * kernel2
+      enddo
+
+    end subroutine calc_integ_bias_corr
+      
+    subroutine kernel_pkcorr(k,x,mu,kernel1,kernel2)
+
+      implicit none
+      real(DP) :: kernel1,kernel2,k,x,mu
+      real(DP) :: kq,q, pk_q,pk_kq
+      
+      kq = k*dsqrt(1.d0+x**2-2.d0*mu*x)
+      q = k*x
+      
+      pk_q = find_pk(q)
+      pk_kq = find_pk(kq)
+      
+      kernel1 = pk_q*pk_kq*kernel(1,kq,q,k)
+      kernel2 = pk_q*pk_kq*kernel(2,kq,q,k)
+
+    end subroutine kernel_pkcorr
+
+    function kernel(a, k1, k2, k3)
+
+      implicit none
+      
+      integer a
+      real(DP)   kernel, k1, k2, k3, k1dk2
+      k1dk2 = ( k3**2 - k1**2 - k2**2 ) / 2.d0
+
+      if(a.eq.1) kernel = 5.d0/7.d0 + 0.5d0*k1dk2* &
+           (1.d0/k1**2 + 1.d0/k2**2) + 2.d0/7.d0*(k1dk2/(k1*k2))**2
+      if(a.eq.2) kernel = 3.d0/7.d0 + 0.5d0*k1dk2* &
+           (1.d0/k1**2 + 1.d0/k2**2) + 4.d0/7.d0*(k1dk2/(k1*k2))**2
+      
+    end function kernel
+    
   end module pk_rsd
 
 
