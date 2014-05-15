@@ -24,7 +24,7 @@ program driver
 
   ! Approx z=0.57 values 
   sigmav = 4.6
-  ff = 0.75
+  ff = 0.755
 
   ! Bias terms 
   b1 = 1.0

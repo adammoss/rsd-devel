@@ -6,6 +6,11 @@ module pk_rsd
      
   integer :: nk = 200
   real(DP), allocatable :: ak(:), pk(:)
+
+  integer imu_max
+  parameter(imu_max=10)
+  integer ixmax
+  parameter(ixmax=2000)
   
   integer :: ik_max
   real(DP), allocatable :: ak_camb(:), pk_camb(:)
@@ -317,8 +322,7 @@ contains
     function integ_fp_B(ip, x,k,xmin,xmax)
 
       implicit none
-      integer ip, imu, imu_max
-      parameter(imu_max=10)
+      integer ip, imu
       real(DP)  integ_fp_B, xmin, xmax, mumin, mumax
       real(DP)  k, x, mu, wmu(imu_max), mmu(imu_max)
      
@@ -341,8 +345,7 @@ contains
     function integ_fp_A(ip, x,k,xmin,xmax)
 
       implicit none
-      integer ip, imu, imu_max
-      parameter(imu_max=10)
+      integer ip, imu
       real*8  integ_fp_A, xmin, xmax, mumin, mumax
       real*8  k, x, mu, wmu(imu_max), mmu(imu_max)
 
@@ -369,8 +372,7 @@ contains
       
       implicit none
       integer ik, isub
-      integer ix, ixmax
-      parameter(ixmax=600)
+      integer ix
       real(DP) :: kmin, kmax, xmin, xmax, mumin, mumax
       real(DP) :: k, ww(ixmax), xx(ixmax),kfact, pk_val
       real(DP) :: alpha
