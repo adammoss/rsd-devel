@@ -23,11 +23,11 @@ program driver
   !sigma_8 = 0.817
 
   ! Approx z=0.57 values 
-  sigmav = 4.6
-  ff = 0.755
+  sigmav = 4.44
+  ff = 0.785
 
   ! Bias terms 
-  b1 = 1.0
+  b1 = 2.0
 
   call load_matterpower_data(pkfile) 
   call calc_pkred(outroot)

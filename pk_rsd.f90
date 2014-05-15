@@ -4,7 +4,7 @@ module pk_rsd
   integer, parameter :: DP = kind(1.0D0)
   real(DP), parameter :: pi = 3.1415926535897932384626433832795d0, twopi=2*pi, fourpi=4*pi
      
-  integer :: nk = 200
+  integer :: nk = 100
   real(DP), allocatable :: ak(:), pk(:)
 
   integer imu_max
@@ -553,16 +553,23 @@ contains
       pk2tt(ik) = ff**2*fact22*ptt
       pk4tt(ik) = ff**2*fact24*ptt
 
-      pk0corr_B(ik) = (fact10 * pk_B1 + fact20 * pk_B2 + fact30 * pk_B3 + fact40 * pk_B4)*b1**4.0
-      pk2corr_B(ik) = (fact12 * pk_B1 + fact22 * pk_B2 + fact32 * pk_B3 + fact42 * pk_B4)*b1**4.0
-      pk4corr_B(ik) = (fact14 * pk_B1 + fact24 * pk_B2 + fact34 * pk_B3 + fact44 * pk_B4)*b1**4.0
+      !write(*,*) k,pdd*(1.0+2.0/3.0*ff/b1+1.0/5.0*(ff/b1)**2),pk0dd(ik)+pk0dt(ik)+pk0tt(ik)
+      !write(*,*) k,pdd*(4.0/3.0*ff/b1+4.0/7.0*(ff/b1)**2),pk2dd(ik)+pk2dt(ik)+pk2tt(ik)
 
-      pk0corr_A(ik) = (fact10 * pk_A1 + fact20 * pk_A2 + fact30 * pk_A3)*b1**3.0
-      pk2corr_A(ik) = (fact12 * pk_A1 + fact22 * pk_A2 + fact32 * pk_A3)*b1**3.0
-      pk4corr_A(ik) = (fact14 * pk_A1 + fact24 * pk_A2 + fact34 * pk_A3)*b1**3.0
+      ! Note A(k,mu,f) ~ kmuf (eqn 19) and B(k,mu,f) ~ (kmuf)^2 (eqn 20 of Taruya 2010)
+      ! Writing as A(k,mu,beta) so f->beta means B ~ b_1^2 and A ~ b_1
+
+      pk0corr_B(ik) = (fact10 * pk_B1 + fact20 * pk_B2 + fact30 * pk_B3 + fact40 * pk_B4)*b1**2.0
+      pk2corr_B(ik) = (fact12 * pk_B1 + fact22 * pk_B2 + fact32 * pk_B3 + fact42 * pk_B4)*b1**2.0
+      pk4corr_B(ik) = (fact14 * pk_B1 + fact24 * pk_B2 + fact34 * pk_B3 + fact44 * pk_B4)*b1**2.0
+
+      pk0corr_A(ik) = (fact10 * pk_A1 + fact20 * pk_A2 + fact30 * pk_A3)*b1**1.0
+      pk2corr_A(ik) = (fact12 * pk_A1 + fact22 * pk_A2 + fact32 * pk_A3)*b1**1.0
+      pk4corr_A(ik) = (fact14 * pk_A1 + fact24 * pk_A2 + fact34 * pk_A3)*b1**1.0
          
-      !write(6,'(i4,1p100e11.3)') ik,k,pk0dd(ik),pk2dd(ik),pk4dd(ik),pk0dt(ik),pk2dt(ik),pk4dt(ik),pk0tt(ik),pk2tt(ik),pk4tt(ik), &
-      !    pk0corr_B(ik),pk2corr_B(ik),pk4corr_B(ik),pk0corr_A(ik),pk2corr_A(ik),pk4corr_A(ik)
+      !write(6,'(i4,1p100e11.3)') ik,k,pk0dd(ik),pk2dd(ik),pk4dd(ik),&
+      ! pk0dt(ik),pk2dt(ik),pk4dt(ik),pk0tt(ik),pk2tt(ik),pk4tt(ik), &
+      !  pk0corr_B(ik),pk2corr_B(ik),pk4corr_B(ik),pk0corr_A(ik),pk2corr_A(ik),pk4corr_A(ik)
          
     end subroutine calc_correction
 
