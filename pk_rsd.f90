@@ -5,12 +5,12 @@ module pk_rsd
   real(DP), parameter :: pi = 3.1415926535897932384626433832795d0, twopi=2*pi, fourpi=4*pi
      
   integer :: nk = 100
-  real(DP), allocatable :: ak(:), pk(:)
+  real(DP), allocatable :: ak(:), pk(:),pk_dd(:),pk_tt(:),pk_dt(:)
 
   integer imu_max
   parameter(imu_max=10)
   integer ixmax
-  parameter(ixmax=2000)
+  parameter(ixmax=1000)
   
   integer :: ik_max
   real(DP), allocatable :: ak_camb(:), pk_camb(:)
@@ -22,6 +22,9 @@ module pk_rsd
 
   ! Bias terms
   real(DP) :: b1, b2
+  real(DP) :: bs2 = 0.0d0
+
+  logical :: use_linear = .true.
 
   real(DP), allocatable :: pk0dd(:),pk2dd(:),pk4dd(:)
   real(DP), allocatable :: pk0dt(:),pk2dt(:),pk4dt(:)
@@ -54,6 +57,8 @@ contains
     pk0corr_B(:) = 0.0d0
     pk2corr_B(:) = 0.0d0
     pk4corr_B(:) = 0.0d0
+
+    if (bs2 .eq. 0.0d0) bs2 = -4.0/7.0*(b1-1.0)
 
   end subroutine init_pk
  
@@ -89,11 +94,22 @@ contains
 
       dlnk=log(ak_temp(ik-1)/ak_temp(1))/dble(nk-1)
 
-      allocate(ak(nk),pk(nk))
+      allocate(ak(nk),pk(nk),pk_dd(nk),pk_dt(nk),pk_tt(nk))
       do ik=1,nk
          ak(ik) = ak_temp(1)*exp(dble(ik-1)*dlnk)
          pk(ik) = find_pk(ak(ik))
       end do
+
+      ! Linear dd, tt and dt
+      if (use_linear) then
+         do ik=1,nk
+            pk_dd(ik) = pk(ik)
+            pk_tt(ik) = pk(ik)
+            pk_dt(ik) = pk(ik)
+         end do
+      else
+         stop 'Not implemented yet'
+      end if
 
       write(6,*) 'k_min =', ak(1)
       write(6,*) 'k_max =', ak(nk)
@@ -375,7 +391,7 @@ contains
       integer ik, isub
       integer ix
       real(DP) :: kmin, kmax, xmin, xmax, mumin, mumax
-      real(DP) :: k, ww(ixmax), xx(ixmax),kfact, pk_val
+      real(DP) :: k, ww(ixmax), xx(ixmax),kfact
       real(DP) :: alpha
       real(DP) :: pk_B111, pk_B112, pk_B121
       real(DP) :: pk_B122, pk_B211, pk_B212
@@ -393,7 +409,7 @@ contains
       real(DP) :: fact02,fact12,fact22,fact32,fact42
       real(DP) :: fact04,fact14,fact24,fact34,fact44
       real(DP) :: ptt,pdt,pdd
-      real(DP) :: bias_corr1,bias_corr2
+      real(DP) :: pb1,pb2,pb3,pb4,pb5,pb6,pb7
 
       kmin = ak(1)
       kmax = ak(nk) 
@@ -536,17 +552,13 @@ contains
       fact24 = fact(2,4,alpha)
       fact34 = fact(3,4,alpha)
       fact44 = fact(4,4,alpha)
-
-      pk_val = find_pk(k)
       
-      pdd = pk_val*b1**2
-      pdt = pk_val*b1
-      ptt = pk_val
-
-      call calc_bias_corr(k,bias_corr1,bias_corr2)
-      pdd = pdd + 2.0*b1*b2*bias_corr1
-      
-      pdt = pdt + b2*bias_corr2
+      call calc_bias_corr(k,pb1,pb2,pb3,pb4,pb5,pb6)
+      pdd = pk_dd(ik)*b1**2
+      pdt = pk_dt(ik)*b1
+      ptt = pk_tt(ik)
+      pdd = pdd + 2.0*b1*b2*pb1 + 2.0*bs2*b1*pb3 + 2.0*b2*bs2*pb5 + bs2**2*pb6
+      pdt = pdt + b2*pb2 + bs2*pb4
    
       pk0dd(ik) = fact00*pdd
       pk2dd(ik) = fact02*pdd
@@ -582,13 +594,13 @@ contains
 
 ! ******************************************************* 
 
-    subroutine calc_pkred(filename)
+    subroutine calc_pkred()
   
 !     Summing up all contributions to redshift P(k) in PT
 !     and calculating monopole, quadrupole and hexadecapole
 !     spectra
 
-      character(len=200) filename
+      implicit none
       integer ik
       
       !$OMP PARAllEl DO DEFAUlT(SHARED),SCHEDUlE(DYNAMIC) &
@@ -597,6 +609,16 @@ contains
          call calc_correction(ik)
       end do
       !$OMP END PARAllEl DO
+
+    end subroutine calc_pkred
+
+! ******************************************************* 
+
+    subroutine output_pkred(filename)
+
+      implicit none
+      character(len=200) filename
+      integer ik
       
       open(unit=11,file=trim(filename)//'_l0.dat',status='unknown')
       do ik=1,nk
@@ -616,8 +638,7 @@ contains
       end do
       close(11)
 
-
-    end subroutine calc_pkred
+    end subroutine output_pkred
 
 ! ************************************************ 
 
@@ -671,21 +692,27 @@ contains
 
 ! ******************************************************* c
 
-    subroutine calc_bias_corr(k,bias_corr1,bias_corr2)
+    subroutine calc_bias_corr(k,pb1,pb2,pb3,pb4,pb5,pb6)
 
       !\int d^3q /(2*pi)^3 G^(2)(k-q,q) * P(k-q) * P(q)
 
       real(DP) :: k,kmin,kmax,xmin,xmax
       real(DP) :: xx(ixmax), wx(ixmax),x
       integer ix
-      real(DP) :: integ_pkcorr1, integ_pkcorr2
-      real(DP) :: bias_corr1,bias_corr2
+      real(DP) :: i1,i2,i3,i4,i5,i6
+      real(DP) :: pb1,pb2,pb3,pb4,pb5,pb6
+      real(DP) :: plin2
 
       kmin = ak(1)
       kmax = ak(nk)
 
-      bias_corr1 = 0.0d0
-      bias_corr2 = 0.0d0
+      pb1 = 0.0d0
+      pb2 = 0.0d0
+      pb3 = 0.0d0
+      pb4 = 0.0d0
+      pb5 = 0.0d0
+      pb6 = 0.0d0
+      plin2 = 0.0d0
 
       xmin = kmin / k
       xmax = kmax / k
@@ -696,30 +723,47 @@ contains
 
       do ix=1,ixmax
          x = dexp(xx(ix))
-         call  calc_integ_bias_corr(k,x,xmin,xmax,integ_pkcorr1, integ_pkcorr2)
-         bias_corr1 = bias_corr1 + wx(ix)*integ_pkcorr1*x**3
-         bias_corr2 = bias_corr2 + wx(ix)*integ_pkcorr2*x**3
+         call  calc_integ_bias_corr(k,x,xmin,xmax,i1,i2,i3,i4,i5,i6)
+         pb1 = pb1 + wx(ix)*i1*x**3
+         pb2 = pb2 + wx(ix)*i2*x**3
+         pb3 = pb3 + wx(ix)*i3*x**3
+         pb4 = pb4 + wx(ix)*i4*x**3
+         pb5 = pb5 + wx(ix)*i5*x**3
+         pb6 = pb6 + wx(ix)*i6*x**3
+         plin2 = plin2 + wx(ix)*x**3*find_pk(x*k)**2.0
       end do
       
-      bias_corr1 = 2.0*bias_corr1 * k**3 / (2.d0*pi)**2
-      bias_corr2 = 2.0*bias_corr2 * k**3 / (2.d0*pi)**2
+      pb1 = 2.0*pb1 * k**3 / (2.d0*pi)**2
+      pb2 = 2.0*pb2 * k**3 / (2.d0*pi)**2
+      pb3 = 2.0*pb3 * k**3 / (2.d0*pi)**2
+      pb4 = 2.0*pb4 * k**3 / (2.d0*pi)**2
+      pb5 = 2.0*pb5 * k**3 / (2.d0*pi)**2
+      pb6 = 2.0*pb6 * k**3 / (2.d0*pi)**2
+      plin2 = 2.0*plin2 * k**3 / (2.d0*pi)**2
 
-      !write(*,'(10E15.5)') k,find_pk(k),bias_corr1,bias_corr2
+      pb5 = -0.5*(2.0/3.0*plin2-pb5)
+      pb6 = -0.5*(4.0/9.0*plin2-pb6)
+
+      write(*,'(10E15.5)') k,find_pk(k),pb1,pb2,pb3,pb4,pb5,pb6
 
     end subroutine calc_bias_corr
 
-    subroutine calc_integ_bias_corr(k,x,xmin,xmax,integ_pkcorr1, integ_pkcorr2)
+    subroutine calc_integ_bias_corr(k,x,xmin,xmax,i1,i2,i3,i4,i5,i6)
       
       implicit none
       real(DP) :: k,x,xmin,xmax
-      real(DP) :: integ_pkcorr1, integ_pkcorr2
+      real(DP) :: i1,i2,i3,i4,i5,i6
       real(DP) :: mumin,mumax
       real(DP) :: mmu(imu_max), wmu(imu_max)
-      real(DP) :: kernel1,kernel2
+      real(DP) :: k1,k2,k3,k4,k5,k6
       integer :: imu
       
-      integ_pkcorr1 = 0.0d0
-      integ_pkcorr2 = 0.0d0
+      i1 = 0.0d0
+      i2 = 0.0d0
+      i3 = 0.0d0
+      i4 = 0.0d0
+      i5 = 0.0d0
+      i6 = 0.0d0
       
       mumin = max(-1.d0, (1.d0+x**2-xmax**2)/2.d0/x)
       mumax = min( 1.d0, (1.d0+x**2-xmin**2)/2.d0/x)
@@ -729,17 +773,22 @@ contains
       call gaulegf(mumin, mumax, mmu, wmu, imu_max)
 
       do imu=1, imu_max
-         call kernel_pkcorr(k,x, mmu(imu), kernel1, kernel2)
-         integ_pkcorr1 = integ_pkcorr1 + wmu(imu) * kernel1
-         integ_pkcorr2 = integ_pkcorr2 + wmu(imu) * kernel2
+         call kernel_pkcorr(k,x,mmu(imu),k1,k2,k3,k4,k5,k6)
+         i1 = i1 + wmu(imu) * k1
+         i2 = i2 + wmu(imu) * k2
+         i3 = i3 + wmu(imu) * k3
+         i4 = i4 + wmu(imu) * k4
+         i5 = i5 + wmu(imu) * k5
+         i6 = i6 + wmu(imu) * k6
       enddo
 
     end subroutine calc_integ_bias_corr
       
-    subroutine kernel_pkcorr(k,x,mu,kernel1,kernel2)
+    subroutine kernel_pkcorr(k,x,mu,k1,k2,k3,k4,k5,k6)
 
       implicit none
-      real(DP) :: kernel1,kernel2,k,x,mu
+      real(DP) :: k,x,mu
+      real(DP) :: k1,k2,k3,k4,k5,k6
       real(DP) :: kq,q, pk_q,pk_kq
       
       kq = k*dsqrt(1.d0+x**2-2.d0*mu*x)
@@ -748,12 +797,23 @@ contains
       pk_q = find_pk(q)
       pk_kq = find_pk(kq)
       
-      kernel1 = pk_q*pk_kq*kernel(1,kq,q,k)
-      kernel2 = pk_q*pk_kq*kernel(2,kq,q,k)
+      k1 = pk_q*pk_kq*kernel(1,kq,q,k)
+      k2 = pk_q*pk_kq*kernel(2,kq,q,k)
+      k3 = pk_q*pk_kq*kernel(3,kq,q,k)
+      k4 = pk_q*pk_kq*kernel(4,kq,q,k)
+      k5 = pk_q*pk_kq*kernel(5,kq,q,k)
+      k6 = pk_q*pk_kq*kernel(6,kq,q,k)
 
     end subroutine kernel_pkcorr
 
     function kernel(a, k1, k2, k3)
+
+!     a=1 for kernel of pk_b2d
+!     a=2 for kernel of pk_b2t
+!     a=3 for kernel of pk_bs2d
+!     a=4 for kernel of pk_bs2t
+!     a=5 partial kernel for pk_b2s2
+!     a=6 partial kernel for pk_bs22
 
       implicit none
       
@@ -765,7 +825,15 @@ contains
            (1.d0/k1**2 + 1.d0/k2**2) + 2.d0/7.d0*(k1dk2/(k1*k2))**2
       if(a.eq.2) kernel = 3.d0/7.d0 + 0.5d0*k1dk2* &
            (1.d0/k1**2 + 1.d0/k2**2) + 4.d0/7.d0*(k1dk2/(k1*k2))**2
-      
+      if(a.eq.3) kernel = (5.d0/7.d0 + 0.5d0*k1dk2* &
+           (1.d0/k1**2 + 1.d0/k2**2) + 2.d0/7.d0*(k1dk2/(k1*k2))**2)* &
+           ((k1dk2/(k1*k2))**2-1.0/3.0)
+      if(a.eq.4) kernel = (3.d0/7.d0 + 0.5d0*k1dk2* &
+           (1.d0/k1**2 + 1.d0/k2**2) + 4.d0/7.d0*(k1dk2/(k1*k2))**2)* &
+           ((k1dk2/(k1*k2))**2-1.0/3.0) 
+      if(a.eq.5) kernel = ((k1dk2/(k1*k2))**2-1.0/3.0)
+      if(a.eq.6) kernel = ((k1dk2/(k1*k2))**2-1.0/3.0)**2.0
+
     end function kernel
     
   end module pk_rsd

@@ -111,10 +111,16 @@ class Bias():
           return (1.0/(2*np.pi)**2)*q1**2*np.float(self.Pk(q1))*np.float(self.Pk(self.q2(k1,q1,mu1)))*self.GS2(k1,q1,mu1)*self.S2(k1,q1,mu1)
 
      # Eqn 46
+     #def Pb2s2(self,mu1,q1,k1):
+     #     return -0.5*(1.0/(2*np.pi)**2)*q1**2*np.float(self.Pk(q1))*((2.0/3.0)*np.float(self.Pk(q1))-np.float(self.Pk(self.q2(k1,q1,mu1)))*self.S2(k1,q1,mu1))
+
      def Pb2s2(self,mu1,q1,k1):
           return -0.5*(1.0/(2*np.pi)**2)*q1**2*np.float(self.Pk(q1))*((2.0/3.0)*np.float(self.Pk(q1))-np.float(self.Pk(self.q2(k1,q1,mu1)))*self.S2(k1,q1,mu1))
 
      # Eqn 47
+     #def Pbs22(self,mu1,q1,k1):
+    #      return -0.5*(1.0/(2*np.pi)**2)*q1**2*np.float(self.Pk(q1))*((4.0/9.0)*np.float(self.Pk(q1))-np.float(self.Pk(self.q2(k1,q1,mu1)))*(self.S2(k1,q1,mu1))**2)
+
      def Pbs22(self,mu1,q1,k1):
           return -0.5*(1.0/(2*np.pi)**2)*q1**2*np.float(self.Pk(q1))*((4.0/9.0)*np.float(self.Pk(q1))-np.float(self.Pk(self.q2(k1,q1,mu1)))*(self.S2(k1,q1,mu1))**2)
 

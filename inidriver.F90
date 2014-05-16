@@ -29,12 +29,16 @@ program driver
 
   ! Bias terms 
   b1 = 2.035
-  b2 = 0.5
+  !b2 = 2.8
+  b2 = 2.5
+
+  #bs2 = 1.0
 
   write(*,*) 'P_0/P_2 = ', (1.0+2.0/3.0*ff/b1+1.0/5.0*(ff/b1)**2)/(4.0/3.0*ff/b1+4.0/7.0*(ff/b1)**2)
 
   call load_matterpower_data(pkfile) 
-  call calc_pkred(outroot)
+  call calc_pkred()
+  call output_pkred(outroot)
 
   call timer_stop()
   call timer_elapsed(elapsed_time)
