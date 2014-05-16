@@ -1,8 +1,0 @@
-import matplotlib.pyplot as plt
-import numpy as np
-
-fileroot = 'test'
-
-data = np.loadtext(fileroot+'_l0.dat')
-
-print data
