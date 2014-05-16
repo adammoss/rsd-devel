@@ -86,7 +86,8 @@ c the computation and output default parameters
       ifid      = 0
 
 c the default cosmological parameters 
-      sigma8    = 0.817
+c     AJM - do I need to turn off rescaling? 
+      sigma8    = 0.847
       omegam    = 0.279d0
       omegab    = 0.165 * omegam
       w_de      = -1.0

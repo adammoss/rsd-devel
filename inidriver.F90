@@ -6,7 +6,7 @@ program driver
   use timer
   implicit none
   character(LEN=8) :: elapsed_time
-  character(len=200) :: pkfile
+  character(len=200) :: pkfile, regpt_dd,regpt_dt,regpt_tt
   character(len=200) :: outroot
 
   call timer_start()
