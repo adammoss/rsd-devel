@@ -5,6 +5,8 @@ import numpy as np
 
 fileroot = 'test'
 
+scale_factor = 1.0
+
 ngc = np.loadtxt('Beutler_et_al_2013_ps_cmass_DR11v1_NGC_111_212_114_Yamamoto_16000000_2000.dat')
 sgc = np.loadtxt('Beutler_et_al_2013_ps_cmass_DR11v1_SGC_84_163_86_Yamamoto_5000000_2000.dat')
 
@@ -33,7 +35,7 @@ for width in [8.8]:
     #plt.plot(k0,dd0+dt0)
     #plt.plot(k0,dd0+dt0+tt0,linestyle='--',color='k')
     #plt.plot(k0,dd0+dt0+tt0+Acorr0,color='k')
-    plt.plot(k0,dd0+dt0+tt0+Acorr0+Bcorr0,color='k',label=r'P_0')
+    plt.plot(k0,scale_factor*(dd0+dt0+tt0+Acorr0+Bcorr0),color='k',label=r'P_0')
 
 
     data = np.loadtxt(fileroot+'_l2.dat')
@@ -48,7 +50,7 @@ for width in [8.8]:
     #plt.plot(k2,dd2+dt2)
     #plt.plot(k2,dd2+dt2+tt2,linestyle='--',color='r')
     #plt.plot(k2,dd2+dt2+tt2+Acorr2,color='r')
-    plt.plot(k2,dd2+dt2+tt2+Acorr2+Bcorr2,color='r',label=r'P_2')
+    plt.plot(k2,scale_factor*(dd2+dt2+tt2+Acorr2+Bcorr2),color='r',label=r'P_2')
 
     data = np.loadtxt(fileroot+'_l4.dat')
     k4 = data[:,0]
@@ -62,7 +64,7 @@ for width in [8.8]:
     #plt.plot(k4,dd4+dt4)
     #plt.plot(k4,dd4+dt4+tt4,linestyle='--',color='b')
     #plt.plot(k4,dd4+dt4+tt4+Acorr4,color='b')
-    plt.plot(k4,dd4+dt4+tt4+Acorr4+Bcorr4,color='b',label=r'P_4')
+    plt.plot(k4,scale_factor*(dd4+dt4+tt4+Acorr4+Bcorr4),color='b',label=r'P_4')
 
     # legend
     leg = plt.legend(frameon=True,loc='upper right',numpoints=1)

@@ -607,12 +607,11 @@ contains
       fact34 = fact(3,4,alpha)
       fact44 = fact(4,4,alpha)
       
-      call calc_bias_corr(k,pb1,pb2,pb3,pb4,pb5,pb6)
+      call calc_bias_corr(k,pb1,pb2,pb3,pb4,pb5,pb6,pb7)
       pdd = pk_dd(ik)*b1**2
       pdt = pk_dt(ik)*b1
       ptt = pk_tt(ik)
-      ! The last term b_2^2 * b22 needs checking with Florian
-      pdd = pdd + 2.0*b1*b2*pb1 + 2.0*bs2*b1*pb3 + 2.0*b2*bs2*pb5 + bs2**2*pb6 + b2**2*pb5
+      pdd = pdd + 2.0*b1*b2*pb1 + 2.0*bs2*b1*pb3 + 2.0*b2*bs2*pb5 + bs2**2*pb6 + b2**2*pb7
       pdt = pdt + b2*pb2 + bs2*pb4
    
       pk0dd(ik) = fact00*pdd
@@ -747,15 +746,15 @@ contains
 
 ! ******************************************************* c
 
-    subroutine calc_bias_corr(k,pb1,pb2,pb3,pb4,pb5,pb6)
+    subroutine calc_bias_corr(k,pb1,pb2,pb3,pb4,pb5,pb6,pb7)
 
       !\int d^3q /(2*pi)^3 G^(2)(k-q,q) * P(k-q) * P(q)
 
       real(DP) :: k,kmin,kmax,xmin,xmax
       real(DP) :: xx(ixmax), wx(ixmax),x
       integer ix
-      real(DP) :: i1,i2,i3,i4,i5,i6
-      real(DP) :: pb1,pb2,pb3,pb4,pb5,pb6
+      real(DP) :: i1,i2,i3,i4,i5,i6,i7
+      real(DP) :: pb1,pb2,pb3,pb4,pb5,pb6,pb7
       real(DP) :: plin2
 
       kmin = ak(1)
@@ -767,6 +766,7 @@ contains
       pb4 = 0.0d0
       pb5 = 0.0d0
       pb6 = 0.0d0
+      pb7 = 0.0d0
       plin2 = 0.0d0
 
       xmin = kmin / k
@@ -778,13 +778,14 @@ contains
 
       do ix=1,ixmax
          x = dexp(xx(ix))
-         call  calc_integ_bias_corr(k,x,xmin,xmax,i1,i2,i3,i4,i5,i6)
+         call  calc_integ_bias_corr(k,x,xmin,xmax,i1,i2,i3,i4,i5,i6,i7)
          pb1 = pb1 + wx(ix)*i1*x**3
          pb2 = pb2 + wx(ix)*i2*x**3
          pb3 = pb3 + wx(ix)*i3*x**3
          pb4 = pb4 + wx(ix)*i4*x**3
          pb5 = pb5 + wx(ix)*i5*x**3
          pb6 = pb6 + wx(ix)*i6*x**3
+         pb7 = pb7 + wx(ix)*i7*x**3
          plin2 = plin2 + wx(ix)*x**3*find_pk(x*k)**2.0
       end do
       
@@ -794,23 +795,25 @@ contains
       pb4 = 2.0*pb4 * k**3 / (2.d0*pi)**2
       pb5 = 2.0*pb5 * k**3 / (2.d0*pi)**2
       pb6 = 2.0*pb6 * k**3 / (2.d0*pi)**2
+      pb7 = 2.0*pb7 * k**3 / (2.d0*pi)**2
       plin2 = 2.0*plin2 * k**3 / (2.d0*pi)**2
 
       pb5 = -0.5*(2.0/3.0*plin2-pb5)
       pb6 = -0.5*(4.0/9.0*plin2-pb6)
+      pb7 = -0.5*(plin2-pb7)
 
-      !write(*,'(10E15.5)') k,find_pk(k),pb1,pb2,pb3,pb4,pb5,pb6
+      !write(*,'(10E15.5)') k,find_pk(k),pb1,pb2,pb3,pb4,pb5,pb6,pb7
 
     end subroutine calc_bias_corr
 
-    subroutine calc_integ_bias_corr(k,x,xmin,xmax,i1,i2,i3,i4,i5,i6)
+    subroutine calc_integ_bias_corr(k,x,xmin,xmax,i1,i2,i3,i4,i5,i6,i7)
       
       implicit none
       real(DP) :: k,x,xmin,xmax
-      real(DP) :: i1,i2,i3,i4,i5,i6
+      real(DP) :: i1,i2,i3,i4,i5,i6,i7
       real(DP) :: mumin,mumax
       real(DP) :: mmu(imu_max), wmu(imu_max)
-      real(DP) :: k1,k2,k3,k4,k5,k6
+      real(DP) :: k1,k2,k3,k4,k5,k6,k7
       integer :: imu
       
       i1 = 0.0d0
@@ -819,6 +822,7 @@ contains
       i4 = 0.0d0
       i5 = 0.0d0
       i6 = 0.0d0
+      i7 = 0.0d0
       
       mumin = max(-1.d0, (1.d0+x**2-xmax**2)/2.d0/x)
       mumax = min( 1.d0, (1.d0+x**2-xmin**2)/2.d0/x)
@@ -828,22 +832,23 @@ contains
       call gaulegf(mumin, mumax, mmu, wmu, imu_max)
 
       do imu=1, imu_max
-         call kernel_pkcorr(k,x,mmu(imu),k1,k2,k3,k4,k5,k6)
+         call kernel_pkcorr(k,x,mmu(imu),k1,k2,k3,k4,k5,k6,k7)
          i1 = i1 + wmu(imu) * k1
          i2 = i2 + wmu(imu) * k2
          i3 = i3 + wmu(imu) * k3
          i4 = i4 + wmu(imu) * k4
          i5 = i5 + wmu(imu) * k5
          i6 = i6 + wmu(imu) * k6
+         i7 = i7 + wmu(imu) * k7
       enddo
 
     end subroutine calc_integ_bias_corr
       
-    subroutine kernel_pkcorr(k,x,mu,k1,k2,k3,k4,k5,k6)
+    subroutine kernel_pkcorr(k,x,mu,k1,k2,k3,k4,k5,k6,k7)
 
       implicit none
       real(DP) :: k,x,mu
-      real(DP) :: k1,k2,k3,k4,k5,k6
+      real(DP) :: k1,k2,k3,k4,k5,k6,k7
       real(DP) :: kq,q, pk_q,pk_kq
       
       kq = k*dsqrt(1.d0+x**2-2.d0*mu*x)
@@ -858,6 +863,7 @@ contains
       k4 = pk_q*pk_kq*kernel(4,kq,q,k)
       k5 = pk_q*pk_kq*kernel(5,kq,q,k)
       k6 = pk_q*pk_kq*kernel(6,kq,q,k)
+      k7 = pk_q*pk_kq
 
     end subroutine kernel_pkcorr
 

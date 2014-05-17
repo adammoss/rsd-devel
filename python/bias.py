@@ -37,6 +37,7 @@ class Bias():
           Pbs2ta = np.zeros(self.n_k_sample)
           Pb2s2a = np.zeros(self.n_k_sample)
           Pbs22a = np.zeros(self.n_k_sample)
+          Pb22a = np.zeros(self.n_k_sample)
           sigma3a = np.zeros(self.n_k_sample)
 
           for i in range(0,self.n_k_sample):
@@ -50,8 +51,9 @@ class Bias():
                Pbs2ta[i] =  self.int_trap(self.Pbs2t,kval)
                Pb2s2a[i] =  self.int_trap(self.Pb2s2,kval)
                Pbs22a[i] =  self.int_trap(self.Pbs22,kval)
+               Pb22a[i] =  self.int_trap(self.Pb22,kval)
                sigma3a[i] = self.int_trap(self.sigma3,kval)
-               if debug: print karr[i],Pa[i],Pb2da[i],Pb2ta[i],Pbs2da[i],Pbs2ta[i],Pb2s2a[i],Pbs22a[i],sigma3a[i]
+               if debug: print karr[i],Pa[i],Pb2da[i],Pb2ta[i],Pbs2da[i],Pbs2ta[i],Pb2s2a[i],Pbs22a[i],Pb22a[i],sigma3a[i]
 
           self.Pk_b2d=intp.InterpolatedUnivariateSpline(karr,Pb2da,k=3)
           self.Pk_b2t=intp.InterpolatedUnivariateSpline(karr,Pb2ta,k=3)
@@ -111,18 +113,15 @@ class Bias():
           return (1.0/(2*np.pi)**2)*q1**2*np.float(self.Pk(q1))*np.float(self.Pk(self.q2(k1,q1,mu1)))*self.GS2(k1,q1,mu1)*self.S2(k1,q1,mu1)
 
      # Eqn 46
-     #def Pb2s2(self,mu1,q1,k1):
-     #     return -0.5*(1.0/(2*np.pi)**2)*q1**2*np.float(self.Pk(q1))*((2.0/3.0)*np.float(self.Pk(q1))-np.float(self.Pk(self.q2(k1,q1,mu1)))*self.S2(k1,q1,mu1))
-
      def Pb2s2(self,mu1,q1,k1):
           return -0.5*(1.0/(2*np.pi)**2)*q1**2*np.float(self.Pk(q1))*((2.0/3.0)*np.float(self.Pk(q1))-np.float(self.Pk(self.q2(k1,q1,mu1)))*self.S2(k1,q1,mu1))
 
      # Eqn 47
-     #def Pbs22(self,mu1,q1,k1):
-    #      return -0.5*(1.0/(2*np.pi)**2)*q1**2*np.float(self.Pk(q1))*((4.0/9.0)*np.float(self.Pk(q1))-np.float(self.Pk(self.q2(k1,q1,mu1)))*(self.S2(k1,q1,mu1))**2)
-
      def Pbs22(self,mu1,q1,k1):
-          return -0.5*(1.0/(2*np.pi)**2)*q1**2*np.float(self.Pk(q1))*((4.0/9.0)*np.float(self.Pk(q1))-np.float(self.Pk(self.q2(k1,q1,mu1)))*(self.S2(k1,q1,mu1))**2)
+         return -0.5*(1.0/(2*np.pi)**2)*q1**2*np.float(self.Pk(q1))*((4.0/9.0)*np.float(self.Pk(q1))-np.float(self.Pk(self.q2(k1,q1,mu1)))*(self.S2(k1,q1,mu1))**2)
+
+     def Pb22(self,mu1,q1,k1):
+         return -0.5*(1.0/(2*np.pi)**2)*q1**2*np.float(self.Pk(q1))*((1.0/1.0)*np.float(self.Pk(q1))-np.float(self.Pk(self.q2(k1,q1,mu1)))*(1.0)**2)
 
      # Eqn 51
      def sigma3(self,mu1,q1,k1):
