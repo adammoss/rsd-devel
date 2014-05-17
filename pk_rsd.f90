@@ -12,8 +12,10 @@ module pk_rsd
   integer ixmax
   parameter(ixmax=1000)
   
-  integer :: ik_max
+  integer :: ik_max, ik_max_RegPT
   real(DP), allocatable :: ak_camb(:), pk_camb(:)
+  real(DP), allocatable :: ak_RegPT(:), pk_RegPT_dd(:), pk_RegPT_dt(:), pk_RegPT_tt(:)
+
 
   real(DP) :: sigmav ! Sigma_v
   real(DP) :: growth ! Growth factor 
@@ -24,7 +26,7 @@ module pk_rsd
   real(DP) :: b1, b2
   real(DP) :: bs2 = 0.0d0
 
-  logical :: use_linear = .true.
+  logical :: use_nonlinear = .true.
 
   real(DP), allocatable :: pk0dd(:),pk2dd(:),pk4dd(:)
   real(DP), allocatable :: pk0dt(:),pk2dt(:),pk4dt(:)
@@ -64,21 +66,21 @@ contains
  
 ! ******************************************************* 
 
-      subroutine load_matterpower_data(filename)
+      subroutine load_matterpower_data(filename, regpt_dd,regpt_dt,regpt_tt)
 
 !     input file is assumed to be the matter power spectrum data 
 !     created by CAMB code. 
 
       implicit none
-      character(len=200) filename
+      character(len=200) filename, regpt_dd,regpt_dt,regpt_tt
 
       integer ikmax
       parameter(ikmax=10000)
       integer ik, ikk
       real(DP) :: ak_temp(ikmax), pk_temp(ikmax), dlnk
+      real(DP) :: dum1,dum2,dum3,dum4,dum5,dum6,dum7,dum8,dum9,dum10,dum11
       
       open(9, file=trim(filename), status='unknown')
-      
       do ik=1, ikmax
          read(9,*,END=10) ak_temp(ik), pk_temp(ik)
       enddo
@@ -101,15 +103,49 @@ contains
       end do
 
       ! Linear dd, tt and dt
-      if (use_linear) then
-         do ik=1,nk
-            pk_dd(ik) = pk(ik)
-            pk_tt(ik) = pk(ik)
-            pk_dt(ik) = pk(ik)
-         end do
-      else
-         stop 'Not implemented yet'
-      end if
+      do ik=1,nk
+          pk_dd(ik) = pk(ik)
+          pk_tt(ik) = pk(ik)
+          pk_dt(ik) = pk(ik)
+      end do
+      if (use_nonlinear) then
+
+        open(9, file=trim(regpt_dd), status='unknown')
+        do ik=1, ikmax
+          read(9,*,END=11) ak_temp(ik), dum1,dum2,dum3,dum4,dum5,dum6,pk_temp(ik),dum7,dum8,dum9,dum10,dum11
+        enddo
+ 11     continue
+        close(9)
+
+        ik_max_RegPT = ik-1
+        allocate(ak_RegPT(ik_max_RegPT),pk_RegPT_dd(ik_max_RegPT),pk_RegPT_dt(ik_max_RegPT),pk_RegPT_tt(ik_max_RegPT))
+        ak_RegPT(1:ik_max_RegPT) = ak_temp(1:ik_max_RegPT)
+        pk_RegPT_dd(1:ik_max_RegPT) = pk_temp(1:ik_max_RegPT)  
+
+        open(9, file=trim(regpt_dt), status='unknown')
+        do ik=1, ik_max_RegPT
+          read(9,*) ak_temp(ik), dum1,dum2,dum3,dum4,dum5,dum6,pk_RegPT_dt(ik),dum7,dum8,dum9,dum10,dum11
+        enddo
+        close(9)
+
+        open(9, file=trim(regpt_tt), status='unknown')
+        do ik=1, ik_max_RegPT
+          read(9,*) ak_temp(ik), dum1,dum2,dum3,dum4,dum5,dum6,pk_RegPT_tt(ik),dum7,dum8,dum9,dum10,dum11
+        enddo
+        close(9)
+
+        do ik=1, ik_max_RegPT
+          !write(*,'(10E15.5)') ak_RegPT(ik), pk_RegPT_dd(ik), pk_RegPT_dt(ik), pk_RegPT_tt(ik)
+        enddo
+
+        do ik=1,nk
+          pk_dd(ik) = find_pk_RegPT(1,ak(ik))
+          pk_tt(ik) = find_pk_RegPT(2,ak(ik))
+          pk_dt(ik) = find_pk_RegPT(3,ak(ik))
+          !write(*,'(10E15.5)') ak(ik),pk(ik),pk_dd(ik),pk_dt(ik),pk_tt(ik)
+        end do
+
+      endif
 
       write(6,*) 'k_min =', ak(1)
       write(6,*) 'k_max =', ak(nk)
@@ -172,6 +208,24 @@ contains
       find_pk = s
       
     end function find_pk
+
+    function find_pk_RegPT(a,kk)
+
+      implicit none
+      integer a,j, jmin, jmax
+      real(DP) :: kk, s, ds, find_pk_RegPT
+
+      call hunt(ak_RegPT(1:ik_max_RegPT), kk, j)
+      jmin = j - 2
+      jmax = j + 2
+      if(jmin.lt.1) jmin = 1
+      if(jmax.ge.ik_max_RegPT) jmax = ik_max_RegPT
+      if (a.eq.1) call polint(ak_RegPT(jmin:jmax),pk_RegPT_dd(jmin:jmax),kk,s,ds)
+      if (a.eq.2) call polint(ak_RegPT(jmin:jmax),pk_RegPT_dt(jmin:jmax),kk,s,ds)
+      if (a.eq.3) call polint(ak_RegPT(jmin:jmax),pk_RegPT_tt(jmin:jmax),kk,s,ds)
+      find_pk_RegPT = s
+      
+    end function find_pk_RegPT
 
 ! ******************************************************* 
 
@@ -557,7 +611,8 @@ contains
       pdd = pk_dd(ik)*b1**2
       pdt = pk_dt(ik)*b1
       ptt = pk_tt(ik)
-      pdd = pdd + 2.0*b1*b2*pb1 + 2.0*bs2*b1*pb3 + 2.0*b2*bs2*pb5 + bs2**2*pb6
+      ! The last term b_2^2 * b22 needs checking with Florian
+      pdd = pdd + 2.0*b1*b2*pb1 + 2.0*bs2*b1*pb3 + 2.0*b2*bs2*pb5 + bs2**2*pb6 + b2**2*pb5
       pdt = pdt + b2*pb2 + bs2*pb4
    
       pk0dd(ik) = fact00*pdd
@@ -744,7 +799,7 @@ contains
       pb5 = -0.5*(2.0/3.0*plin2-pb5)
       pb6 = -0.5*(4.0/9.0*plin2-pb6)
 
-      write(*,'(10E15.5)') k,find_pk(k),pb1,pb2,pb3,pb4,pb5,pb6
+      !write(*,'(10E15.5)') k,find_pk(k),pb1,pb2,pb3,pb4,pb5,pb6
 
     end subroutine calc_bias_corr
 

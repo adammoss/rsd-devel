@@ -13,9 +13,16 @@ program driver
 
   !pkfile = 'data/matterpower.dat'
   !pkfile = 'camb/output/test_matterpower_z0.dat'
+
   pkfile = 'camb/output/test_matterpower_z057.dat'
+  regpt_dd = 'RegPT/pk_RegPT.dat_dd'
+  regpt_dt = 'RegPT/pk_RegPT.dat_dt'
+  regpt_tt = 'RegPT/pk_RegPT.dat_tt'
+
   outroot = 'output/test'
   
+  use_nonlinear = .true.
+
   ! Approx z=0 values 
   !ff = 0.492	
   !sigmav = 6.07
@@ -32,11 +39,11 @@ program driver
   !b2 = 2.8
   b2 = 2.5
 
-  #bs2 = 1.0
+  !bs2 = 1.0
 
   write(*,*) 'P_0/P_2 = ', (1.0+2.0/3.0*ff/b1+1.0/5.0*(ff/b1)**2)/(4.0/3.0*ff/b1+4.0/7.0*(ff/b1)**2)
 
-  call load_matterpower_data(pkfile) 
+  call load_matterpower_data(pkfile,regpt_dd,regpt_dt,regpt_tt) 
   call calc_pkred()
   call output_pkred(outroot)
 

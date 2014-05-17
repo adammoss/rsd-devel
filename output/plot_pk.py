@@ -33,7 +33,7 @@ for width in [8.8]:
     #plt.plot(k0,dd0+dt0)
     #plt.plot(k0,dd0+dt0+tt0,linestyle='--',color='k')
     #plt.plot(k0,dd0+dt0+tt0+Acorr0,color='k')
-    plt.plot(k0,dd0+dt0+tt0+Acorr0+Bcorr0,color='k',label='P_0')
+    plt.plot(k0,dd0+dt0+tt0+Acorr0+Bcorr0,color='k',label=r'P_0')
 
 
     data = np.loadtxt(fileroot+'_l2.dat')
@@ -48,7 +48,7 @@ for width in [8.8]:
     #plt.plot(k2,dd2+dt2)
     #plt.plot(k2,dd2+dt2+tt2,linestyle='--',color='r')
     #plt.plot(k2,dd2+dt2+tt2+Acorr2,color='r')
-    plt.plot(k2,dd2+dt2+tt2+Acorr2+Bcorr2,color='r',label='P_2')
+    plt.plot(k2,dd2+dt2+tt2+Acorr2+Bcorr2,color='r',label=r'P_2')
 
     data = np.loadtxt(fileroot+'_l4.dat')
     k4 = data[:,0]
@@ -62,7 +62,7 @@ for width in [8.8]:
     #plt.plot(k4,dd4+dt4)
     #plt.plot(k4,dd4+dt4+tt4,linestyle='--',color='b')
     #plt.plot(k4,dd4+dt4+tt4+Acorr4,color='b')
-    plt.plot(k4,dd4+dt4+tt4+Acorr4+Bcorr4,color='b',label='P_4')
+    plt.plot(k4,dd4+dt4+tt4+Acorr4+Bcorr4,color='b',label=r'P_4')
 
     # legend
     leg = plt.legend(frameon=True,loc='upper right',numpoints=1)
@@ -92,4 +92,6 @@ for width in [8.8]:
     plt.xlabel(r'$k [h \, Mpc^{-1}]$')
     plt.ylabel(r'$P_{\ell} (k) [Mpc\, h^{-1}]^3$')
 
-    plt.savefig("pk_rsd_%dmm.pdf" % int(width*10), bbox_inches='tight', pad_inches=0.02)
+    plt.savefig("pk_rsd_%dmm.pdf" % int(width*10),pad_inches=0.02)    
+
+    #plt.savefig("pk_rsd_%dmm.pdf" % int(width*10), bbox_inches='tight', pad_inches=0.02)
