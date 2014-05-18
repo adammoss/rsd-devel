@@ -42,6 +42,7 @@ program driver
   b1 = Ini_Read_Double('b1')
   b2 = Ini_Read_Double('b2')
   bs2 = Ini_Read_Double('bs2',0.0d0)
+  b3nl = Ini_Read_Double('b3nl',0.0d0)
  
   write(*,*) 'P_0/P_2 = ', (1.0+2.0/3.0*ff/b1+1.0/5.0*(ff/b1)**2)/(4.0/3.0*ff/b1+4.0/7.0*(ff/b1)**2)
 

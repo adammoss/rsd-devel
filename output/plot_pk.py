@@ -5,7 +5,7 @@ import numpy as np
 
 fileroot = 'test'
 
-scale_factor = 1.0
+scale_factor = 0.97
 
 ngc = np.loadtxt('Beutler_et_al_2013_ps_cmass_DR11v1_NGC_111_212_114_Yamamoto_16000000_2000.dat')
 sgc = np.loadtxt('Beutler_et_al_2013_ps_cmass_DR11v1_SGC_84_163_86_Yamamoto_5000000_2000.dat')
