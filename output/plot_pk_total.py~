@@ -1,0 +1,108 @@
+from setup_matplotlib import *
+from matplotlib.ticker import MaxNLocator
+import matplotlib.pyplot as plt
+import numpy as np
+
+fileroot = 'test'
+
+scale_factor = 0.965
+
+ngc = np.loadtxt('Beutler_et_al_2013_ps_cmass_DR11v1_NGC_111_212_114_Yamamoto_16000000_2000.dat')
+sgc = np.loadtxt('Beutler_et_al_2013_ps_cmass_DR11v1_SGC_84_163_86_Yamamoto_5000000_2000.dat')
+
+ngc_theory = np.loadtxt(fileroot+'_window_1.dat')
+sgc_theory = np.loadtxt(fileroot+'_window_2.dat')
+
+for width in [8.8]:
+    fig = plt.figure(figsize=(cm2inch(width), cm2inch(width*6/8.)))
+    ax = fig.add_subplot(111)
+    
+    #plt.errorbar(ngc[:,0],ngc[:,3],ngc[:,6],color='g',fmt='mo',label='')
+    #plt.errorbar(sgc[:,0],sgc[:,3],sgc[:,6],color='m',fmt='mo',label='')
+
+    data = np.loadtxt(fileroot+'_l0.dat')
+    k0 = data[:,0]
+    dd0 = data[:,1]
+    dt0 = data[:,2]
+    tt0 = data[:,3]
+    Acorr0 = data[:,4]
+    Bcorr0 = data[:,5]
+
+    #plt.plot(k0,dd0)
+    #plt.plot(k0,dd0+dt0)
+    #plt.plot(k0,dd0+dt0+tt0,linestyle='--',color='k')
+    #plt.plot(k0,dd0+dt0+tt0+Acorr0,color='k')
+    #plt.plot(k0,scale_factor*(dd0+dt0+tt0+Acorr0+Bcorr0),color='k',label=r'P_0')
+    
+    plt.plot(ngc_theory[:,0],scale_factor*ngc_theory[:,1],color='k')
+    plt.plot(sgc_theory[:,0],scale_factor*sgc_theory[:,1],color='r')
+
+    data = np.loadtxt(fileroot+'_l2.dat')
+    k2 = data[:,0]
+    dd2 = data[:,1]
+    dt2 = data[:,2]
+    tt2 = data[:,3]
+    Acorr2 = data[:,4]
+    Bcorr2 = data[:,5]
+
+    #plt.plot(k2,dd2)
+    #plt.plot(k2,dd2+dt2)
+    #plt.plot(k2,dd2+dt2+tt2,linestyle='--',color='r')
+    #plt.plot(k2,dd2+dt2+tt2+Acorr2,color='r')
+    #plt.plot(k2,scale_factor*(dd2+dt2+tt2+Acorr2+Bcorr2),color='r',label=r'P_2')
+
+    plt.plot(ngc_theory[:,0],scale_factor*ngc_theory[:,2],color='k')
+    plt.plot(sgc_theory[:,0],scale_factor*sgc_theory[:,2],color='r')
+
+    data = np.loadtxt(fileroot+'_l4.dat')
+    k4 = data[:,0]
+    dd4 = data[:,1]
+    dt4 = data[:,2]
+    tt4 = data[:,3]
+    Acorr4 = data[:,4]
+    Bcorr4 = data[:,5]
+
+    #plt.plot(k4,dd4)
+    #plt.plot(k4,dd4+dt4)
+    #plt.plot(k4,dd4+dt4+tt4,linestyle='--',color='b')
+    #plt.plot(k4,dd4+dt4+tt4+Acorr4,color='b')
+    #plt.plot(k4,scale_factor*(dd4+dt4+tt4+Acorr4+Bcorr4),color='b',label=r'P_4')
+
+    # Data
+    plt.errorbar(ngc[:,0],ngc[:,1],ngc[:,4],color='k',fmt='mo',markersize='3',label='NGC')
+    plt.errorbar(sgc[:,0],sgc[:,1],sgc[:,4],color='r',fmt='mo',markersize='3',label='SGC')
+
+    plt.errorbar(ngc[:,0],ngc[:,2],ngc[:,5],color='k',fmt='mo',markersize='3',label='')
+    plt.errorbar(sgc[:,0],sgc[:,2],sgc[:,5],color='r',fmt='mo',markersize='3',label='')
+
+    # legend
+    leg = plt.legend(frameon=True,loc='upper right',numpoints=1)
+    # remove box around legend
+    leg.get_frame().set_edgecolor("white")
+    leg.get_frame().set_alpha(0.8)
+
+    # reduce ticks for small figures
+    if width < 10:
+        ax.yaxis.set_major_locator(MaxNLocator(nbins=5))
+
+    ax.set_yscale('log')
+ 
+    # grid
+    plt.grid(True, which="major", axis="both")
+
+    # axes limits
+    plt.ylim([500, 100000]); plt.xlim([0, 0.2]);
+
+    # reduce white space around figure
+    plt.subplots_adjust(left=0, right=1, top=1, bottom=0)
+
+    # set vertical y axis ticklables
+    for ticklabel in ax.yaxis.get_ticklabels():
+        ticklabel.set_rotation("vertical")
+
+    plt.xlabel(r'$k [h \, Mpc^{-1}]$')
+    plt.ylabel(r'$P_{\ell} (k) [Mpc\, h^{-1}]^3$')
+
+    #plt.savefig("pk_rsd_%dmm.pdf" % int(width*10),pad_inches=0.02)    
+
+    plt.savefig("pk_rsd_%dmm.pdf" % int(width*10), bbox_inches='tight', pad_inches=0.02)

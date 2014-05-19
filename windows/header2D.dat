@@ -1,0 +1,11 @@
+### header ###
+redshift to distance conversion with flat LCDM:
+Omega_m = 0.3 H_0 = 100
+survey_z = 0.57
+############################
+Nmock = 50000
+dk = 0.005
+dk' = 0.0005
+############################
+11 columns: k k' |W(k,k')|^2_00 |W(k,k')|^2_02 |W(k,k')|^2_04 |W(k,k')|^2_20 |W(k,k')|^2_22 |W(k,k')|^2_24 |W(k,k')|^2_40 |W(k,k')|^2_42 |W(k,k')|^2_44
+### header ###
