@@ -7,7 +7,7 @@ program driver
   use timer
   implicit none
   character(LEN=8) :: elapsed_time
-  character(len=200) :: InputFile
+  character(len=200) :: InputFile, WindowFile1,WindowFile2,OutputFile
   character(len=200) :: pkfile, regpt_dd,regpt_dt,regpt_tt
   character(len=200) :: outroot
 
@@ -49,6 +49,14 @@ program driver
   call load_matterpower_data(pkfile,regpt_dd,regpt_dt,regpt_tt) 
   call calc_pkred()
   call output_pkred(outroot)
+
+  WindowFile1 = Ini_Read_String('window1')
+  OutputFile = trim(outroot)//'_window_1.dat'
+  if (WindowFile1 .ne. '') call apply_window(WindowFile1,OutputFile)
+
+  WindowFile2 = Ini_Read_String('window2')
+  OutputFile = trim(outroot)//'_window_2.dat'
+  if (WindowFile2 .ne. '') call apply_window(WindowFile2,OutputFile)
 
   call timer_stop()
   call timer_elapsed(elapsed_time)

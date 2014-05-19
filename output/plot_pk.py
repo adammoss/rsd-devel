@@ -5,7 +5,7 @@ import numpy as np
 
 fileroot = 'test'
 
-scale_factor = 0.97
+scale_factor = 0.965
 
 ngc = np.loadtxt('Beutler_et_al_2013_ps_cmass_DR11v1_NGC_111_212_114_Yamamoto_16000000_2000.dat')
 sgc = np.loadtxt('Beutler_et_al_2013_ps_cmass_DR11v1_SGC_84_163_86_Yamamoto_5000000_2000.dat')
@@ -14,14 +14,11 @@ for width in [8.8]:
     fig = plt.figure(figsize=(cm2inch(width), cm2inch(width*6/8.)))
     ax = fig.add_subplot(111)
     
-    plt.errorbar(ngc[:,0],ngc[:,1],ngc[:,4],color='g',fmt='mo',markersize='3',label='NGC')
-    plt.errorbar(sgc[:,0],sgc[:,1],sgc[:,4],color='m',fmt='mo',markersize='3',label='SGC')
+    plt.errorbar(ngc[:,0],ngc[:,1],ngc[:,4],color='g',fmt='mo',label='',markersize='3')
+    plt.errorbar(sgc[:,0],sgc[:,1],sgc[:,4],color='m',fmt='mo',label='',markersize='3')
 
-    plt.errorbar(ngc[:,0],ngc[:,2],ngc[:,5],color='g',fmt='mo',markersize='3',label='')
-    plt.errorbar(sgc[:,0],sgc[:,2],sgc[:,5],color='m',fmt='mo',markersize='3',label='')
-
-    #plt.errorbar(ngc[:,0],ngc[:,3],ngc[:,6],color='g',fmt='mo',label='')
-    #plt.errorbar(sgc[:,0],sgc[:,3],sgc[:,6],color='m',fmt='mo',label='')
+    plt.errorbar(ngc[:,0],ngc[:,2],ngc[:,5],color='g',fmt='mo',label='',markersize='3')
+    plt.errorbar(sgc[:,0],sgc[:,2],sgc[:,5],color='m',fmt='mo',label='',markersize='3')
 
     data = np.loadtxt(fileroot+'_l0.dat')
     k0 = data[:,0]
@@ -36,8 +33,7 @@ for width in [8.8]:
     #plt.plot(k0,dd0+dt0+tt0,linestyle='--',color='k')
     #plt.plot(k0,dd0+dt0+tt0+Acorr0,color='k')
     plt.plot(k0,scale_factor*(dd0+dt0+tt0+Acorr0+Bcorr0),color='k',label=r'P_0')
-
-
+    
     data = np.loadtxt(fileroot+'_l2.dat')
     k2 = data[:,0]
     dd2 = data[:,1]
@@ -94,6 +90,6 @@ for width in [8.8]:
     plt.xlabel(r'$k [h \, Mpc^{-1}]$')
     plt.ylabel(r'$P_{\ell} (k) [Mpc\, h^{-1}]^3$')
 
-    plt.savefig("pk_rsd_%dmm.pdf" % int(width*10),pad_inches=0.02)    
+    #plt.savefig("pk_rsd_%dmm.pdf" % int(width*10),pad_inches=0.02)    
 
-    #plt.savefig("pk_rsd_%dmm.pdf" % int(width*10), bbox_inches='tight', pad_inches=0.02)
+    plt.savefig("pk_rsd_%dmm.pdf" % int(width*10), bbox_inches='tight', pad_inches=0.02)

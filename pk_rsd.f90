@@ -6,7 +6,7 @@ module pk_rsd
      
   integer :: nk = 200
   real(DP), allocatable :: ak(:), pk(:),pk_dd(:),pk_tt(:),pk_dt(:)
-
+  
   integer imu_max
   parameter(imu_max=10)
   integer ixmax
@@ -15,7 +15,6 @@ module pk_rsd
   integer :: ik_max, ik_max_RegPT
   real(DP), allocatable :: ak_camb(:), pk_camb(:)
   real(DP), allocatable :: ak_RegPT(:), pk_RegPT_dd(:), pk_RegPT_dt(:), pk_RegPT_tt(:)
-
 
   real(DP) :: sigmav ! Sigma_v
   real(DP) :: growth ! Growth factor 
@@ -34,6 +33,7 @@ module pk_rsd
   real(DP), allocatable :: pk0tt(:),pk2tt(:),pk4tt(:)
   real(DP), allocatable :: pk0corr_A(:), pk2corr_A(:), pk4corr_A(:)
   real(DP), allocatable :: pk0corr_B(:), pk2corr_B(:), pk4corr_B(:)
+  real(DP), allocatable :: pk0(:),pk2(:),pk4(:)
 
 contains
    
@@ -45,6 +45,7 @@ contains
     allocate(pk0tt(nk),pk2tt(nk),pk4tt(nk))
     allocate(pk0corr_A(nk),pk2corr_A(nk),pk4corr_A(nk))
     allocate(pk0corr_B(nk),pk2corr_B(nk),pk4corr_B(nk))
+    allocate(pk0(nk),pk2(nk),pk4(nk))
     pk0dd(:) = 0.0d0
     pk2dd(:) = 0.0d0
     pk4dd(:) = 0.0d0
@@ -60,6 +61,9 @@ contains
     pk0corr_B(:) = 0.0d0
     pk2corr_B(:) = 0.0d0
     pk4corr_B(:) = 0.0d0
+    pk0(:) = 0.0d0
+    pk2(:) = 0.0d0
+    pk4(:) = 0.0d0
 
     if (bs2 .eq. 0.0d0) bs2 = -4.0/7.0*(b1-1.0)
     if (b3nl .eq. 0.0d0) b3nl = 32.0/315.0*(b1-1.0)
@@ -78,10 +82,13 @@ contains
 
       integer ikmax
       parameter(ikmax=10000)
-      integer ik, ikk
+      integer ik
       real(DP) :: ak_temp(ikmax), pk_temp(ikmax), dlnk
       real(DP) :: dum1,dum2,dum3,dum4,dum5,dum6,dum7,dum8,dum9,dum10,dum11
       
+      ak_temp(:) = 0.0d0
+      pk_temp(:) = 0.0d0
+ 
       open(9, file=trim(filename), status='unknown')
       do ik=1, ikmax
          read(9,*,END=10) ak_temp(ik), pk_temp(ik)
@@ -229,6 +236,24 @@ contains
       
     end function find_pk_RegPT
 
+    function find_pkl(a,kk)
+      
+      implicit none
+      integer a,j, jmin, jmax
+      real(DP) :: kk, s, ds, find_pkl
+
+      call hunt(ak(1:nk), kk, j)
+      jmin = j - 2
+      jmax = j + 2
+      if(jmin.lt.1) jmin = 1
+      if(jmax.ge.nk) jmax = nk
+      if (a.eq.1) call polint(ak(jmin:jmax),pk0(jmin:jmax),kk,s,ds)
+      if (a.eq.2) call polint(ak(jmin:jmax),pk2(jmin:jmax),kk,s,ds)
+      if (a.eq.3) call polint(ak(jmin:jmax),pk4(jmin:jmax),kk,s,ds)
+      find_pkl = s
+
+    end function find_pkl
+
 ! ******************************************************* 
 
     function fp(ip, x, mu,k,xmin,xmax)
@@ -289,7 +314,6 @@ contains
       fp = fp * x  / (1.+x*x-2.*mu*x)* find_pk(k*x)*find_pk(k*sqrt(1.+x*x-2.*mu*x))
       
     end function fp
-
 
 ! ******************************************************* 
 
@@ -413,7 +437,6 @@ contains
       enddo
 
     end function integ_fp_B
-
 
     function integ_fp_A(ip, x,k,xmin,xmax)
 
@@ -548,8 +571,6 @@ contains
 
       kfact = k**3 / (2.*pi)**2
 
-      ! I am a little unsure about the factor of 2 here 
-
       pk_B111 = 2.d0 * pk_B111 * kfact
       pk_B112 = - 2.d0 * pk_B112 * kfact
       pk_B121 = - 2.d0 * pk_B121 * kfact
@@ -610,6 +631,7 @@ contains
       fact44 = fact(4,4,alpha)
       
       call calc_bias_corr(k,pb1,pb2,pb3,pb4,pb5,pb6,pb7,pb8)
+
       pdd = pk_dd(ik)*b1**2
       pdt = pk_dt(ik)*b1
       ptt = pk_tt(ik)
@@ -629,9 +651,6 @@ contains
       pk2tt(ik) = ff**2*fact22*ptt
       pk4tt(ik) = ff**2*fact24*ptt
 
-      !write(*,*) k,pdd*(1.0+2.0/3.0*ff/b1+1.0/5.0*(ff/b1)**2),pk0dd(ik)+pk0dt(ik)+pk0tt(ik)
-      !write(*,*) k,pdd*(4.0/3.0*ff/b1+4.0/7.0*(ff/b1)**2),pk2dd(ik)+pk2dt(ik)+pk2tt(ik)
-
       ! Note A(k,mu,f) ~ kmuf (eqn 19) and B(k,mu,f) ~ (kmuf)^2 (eqn 20 of Taruya 2010)
       ! Writing as A(k,mu,beta) so f->beta means B ~ b_1^2 and A ~ b_1
 
@@ -642,9 +661,13 @@ contains
       pk0corr_A(ik) = (fact10 * pk_A1 + fact20 * pk_A2 + fact30 * pk_A3)*b1**1.0
       pk2corr_A(ik) = (fact12 * pk_A1 + fact22 * pk_A2 + fact32 * pk_A3)*b1**1.0
       pk4corr_A(ik) = (fact14 * pk_A1 + fact24 * pk_A2 + fact34 * pk_A3)*b1**1.0
+
+      pk0(:) = pk0dd(:)+pk0dt(:)+pk0tt(:)+pk0corr_A(:)+pk0corr_B(:)
+      pk2(:) = pk2dd(:)+pk2dt(:)+pk2tt(:)+pk2corr_A(:)+pk2corr_B(:)
+      pk4(:) = pk4dd(:)+pk4dt(:)+pk4tt(:)+pk4corr_A(:)+pk4corr_B(:)
          
       !write(6,'(i4,1p100e11.3)') ik,k,pk0dd(ik),pk2dd(ik),pk4dd(ik),&
-      ! pk0dt(ik),pk2dt(ik),pk4dt(ik),pk0tt(ik),pk2tt(ik),pk4tt(ik), &
+      !  pk0dt(ik),pk2dt(ik),pk4dt(ik),pk0tt(ik),pk2tt(ik),pk4tt(ik), &
       !  pk0corr_B(ik),pk2corr_B(ik),pk4corr_B(ik),pk0corr_A(ik),pk2corr_A(ik),pk4corr_A(ik)
          
     end subroutine calc_correction
@@ -697,7 +720,109 @@ contains
 
     end subroutine output_pkred
 
-! ************************************************ 
+! ******************************************************* 
+
+    subroutine apply_window(filename,outfile)
+
+      implicit none
+      character(len=200) filename,outfile
+
+      integer ikmax
+      parameter(ikmax=200000)
+      integer ik, ikw_max, ikk
+      real(DP) :: ak_temp(ikmax), akp_temp(ikmax)
+      real(DP) :: win00_temp(ikmax),win02_temp(ikmax),win04_temp(ikmax)
+      real(DP) :: win20_temp(ikmax),win22_temp(ikmax),win24_temp(ikmax)
+      real(DP) :: win40_temp(ikmax),win42_temp(ikmax),win44_temp(ikmax)
+      real(DP) :: ak_prev,akp(ikmax)
+      real(DP) :: win00(ikmax),win02(ikmax),win04(ikmax)
+      real(DP) :: win20(ikmax),win22(ikmax),win24(ikmax)
+      real(DP) :: win40(ikmax),win42(ikmax),win44(ikmax)
+      real(DP) :: sum0,sum2,sum4
+
+      ak_temp(:) = 0.0d0
+      akp_temp(:) = 0.0d0
+      win00_temp(:) = 0.0d0
+      win02_temp(:) = 0.0d0
+      win04_temp(:) = 0.0d0
+      win20_temp(:) = 0.0d0
+      win22_temp(:) = 0.0d0
+      win24_temp(:) = 0.0d0
+      win40_temp(:) = 0.0d0
+      win42_temp(:) = 0.0d0
+      win44_temp(:) = 0.0d0
+
+      open(9, file=trim(filename), status='unknown')
+      do ik=1, ikmax
+         read(9,*,END=10) ak_temp(ik), akp_temp(ik),&
+              win00_temp(ik),win02_temp(ik),win04_temp(ik),&
+              win20_temp(ik),win22_temp(ik),win24_temp(ik),&
+              win40_temp(ik),win42_temp(ik),win44_temp(ik)
+      enddo
+10    continue
+      close(9)
+
+      ikw_max = ik-1
+    
+      open(11,file=trim(outfile),status='unknown')
+
+      ak_prev = 0.0d0
+      ikk = 1
+      do ik=1,ikw_max
+         if (ak_temp(ik).ne.ak_prev) then
+            if (ik.ne.1) then
+               write(11,'(10E15.5)') ak_prev,2*pi*sum0,2*pi*sum2,2*pi*sum4
+            end if
+            akp(:) = 0.0d0
+            win00(:) = 0.0d0
+            win02(:) = 0.0d0
+            win04(:) = 0.0d0
+            win20(:) = 0.0d0
+            win22(:) = 0.0d0
+            win24(:) = 0.0d0
+            win40(:) = 0.0d0
+            win42(:) = 0.0d0
+            win44(:) = 0.0d0
+            ikk = 1
+            ak_prev = ak_temp(ik)
+            sum0 = 0.0d0
+            sum2 = 0.0d0
+            sum4 = 0.0d0
+         end if
+         akp(ikk) = akp_temp(ik)
+         win00(ikk) = win00_temp(ik)
+         win02(ikk) = win02_temp(ik)
+         win04(ikk) = win04_temp(ik)
+         win20(ikk) = win20_temp(ik)
+         win22(ikk) = win22_temp(ik)
+         win24(ikk) = win24_temp(ik)
+         win40(ikk) = win40_temp(ik)
+         win42(ikk) = win42_temp(ik)
+         win44(ikk) = win44_temp(ik)
+         if (akp(ikk)>0.0d0 .and. akp(ikk)<0.3d0) then
+            if (ikk>1) then
+               sum0 = sum0 + &
+                    (find_pkl(1,akp(ikk))*akp(ikk)**2*win00(ikk)+find_pkl(1,akp(ikk-1))*akp(ikk-1)**2*win00(ikk-1))*(akp(ikk)-akp(ikk-1))/2.0 + &
+                    (find_pkl(2,akp(ikk))*akp(ikk)**2*win02(ikk)+find_pkl(2,akp(ikk-1))*akp(ikk-1)**2*win02(ikk-1))*(akp(ikk)-akp(ikk-1))/2.0 + &
+                    (find_pkl(3,akp(ikk))*akp(ikk)**2*win04(ikk)+find_pkl(3,akp(ikk-1))*akp(ikk-1)**2*win04(ikk-1))*(akp(ikk)-akp(ikk-1))/2.0 
+               sum2 = sum2 +  &
+                    (find_pkl(1,akp(ikk))*akp(ikk)**2*win20(ikk)+find_pkl(1,akp(ikk-1))*akp(ikk-1)**2*win20(ikk-1))*(akp(ikk)-akp(ikk-1))/2.0 + &
+                    (find_pkl(2,akp(ikk))*akp(ikk)**2*win22(ikk)+find_pkl(2,akp(ikk-1))*akp(ikk-1)**2*win22(ikk-1))*(akp(ikk)-akp(ikk-1))/2.0 + &
+                    (find_pkl(3,akp(ikk))*akp(ikk)**2*win24(ikk)+find_pkl(3,akp(ikk-1))*akp(ikk-1)**2*win24(ikk-1))*(akp(ikk)-akp(ikk-1))/2.0 
+               sum4 = sum4 +  &
+                    (find_pkl(1,akp(ikk))*akp(ikk)**2*win40(ikk)+find_pkl(1,akp(ikk-1))*akp(ikk-1)**2*win40(ikk-1))*(akp(ikk)-akp(ikk-1))/2.0 + &
+                    (find_pkl(2,akp(ikk))*akp(ikk)**2*win42(ikk)+find_pkl(2,akp(ikk-1))*akp(ikk-1)**2*win42(ikk-1))*(akp(ikk)-akp(ikk-1))/2.0 + &
+                    (find_pkl(3,akp(ikk))*akp(ikk)**2*win44(ikk)+find_pkl(3,akp(ikk-1))*akp(ikk-1)**2*win44(ikk-1))*(akp(ikk)-akp(ikk-1))/2.0 
+            end if
+         end if
+         ikk=ikk+1
+      end do
+
+      close(11)
+
+    end subroutine apply_window
+
+! ******************************************************* 
 
       function fact(n, l, alpha)
 
@@ -747,7 +872,7 @@ contains
       
     end function fact
 
-! ******************************************************* c
+! ******************************************************* 
 
     subroutine calc_bias_corr(k,pb1,pb2,pb3,pb4,pb5,pb6,pb7,pb8)
 
